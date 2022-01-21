@@ -4,20 +4,24 @@ services:
     build:
       context: simple
       dockerfile: Dockerfile-jdk-11
+      args:
+        MOQUI_CONF: conf/MoquiLoadConf.xml
     container_name: moqui-server
     command: ["java", "-cp", ".", "MoquiStart", "port=8080"]
     restart: always
-    links:
+    depends_on:
      - postgres-database
+    networks:
+      - dtq-int
     ports:
      - "8080:8080"
     environment:
      - instance_purpose=dev
      - entity_ds_db_conf=postgres
      - entity_ds_host=postgres-database
-     - entity_ds_port=5430
+     - entity_ds_port=5432
      - entity_ds_database=moqui
-     - entity_ds_user=postgres
+     - entity_ds_user=moqui
      - entity_ds_password=postgres
      - entity_ds_crypt_pass='MoquiDefaultPassword:CHANGEME'
      - webapp_http_host=localhost
@@ -31,11 +35,18 @@ services:
     image: postgres:14.1-alpine
     container_name: postgres-database
     restart: always
+    networks:
+      - dtq-int
     ports:
-      - "127.0.0.1:5430:5430"
+      - "5432:5432"
     environment:
       - POSTGRES_DB=moqui
       - POSTGRES_DB_SCHEMA=public
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - PGPORT=5430
+      - PGPORT=5432
+
+networks:
+  dtq-int:
+    external:
+      name: dtq-int
