@@ -1,41 +1,33 @@
 # Builds a minimal docker image with openjdk and moqui with various volumes for configuration and persisted data outside the container
 # NOTE: add components, build and if needed load data before building a docker image with this
 
-FROM openjdk:11-jdk as TEMP_BUILD_IMAGE
-
+FROM openjdk:11-jdk
+ARG GRADLE_VERSION
 ARG MOQUI_CONF
-ENV GRADLE_HOME=/opt/gradle/gradle-5.6.4
-ENV PATH="/opt/gradle/gradle-5.6.4/bin:${PATH}"
-
-# 2. create empty database
-#RUN psql -h localhost -c "CREATE USER moqui WITH PASSWORD 'postgres'"
-#RUN psql -h localhost -c "CREATE DATABASE moqui OWNER 'moqui'"
+ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
+ENV PATH="/opt/gradle/gradle-${GRADLE_VERSION}/bin:${PATH}"
 
 # 2. build application, load data into database
-RUN wget https://services.gradle.org/distributions/gradle-5.6.4-bin.zip -P /tmp
+RUN wget https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -P /tmp
 RUN mkdir /opt/gradle
-RUN unzip -d /opt/gradle /tmp/gradle-5.6.4-bin.zip
+RUN unzip -d /opt/gradle /tmp/gradle-${GRADLE_VERSION}-bin.zip
 RUN ls -l /opt/gradle
 
 WORKDIR /opt/moqui-source
-COPY moqui-source .
+# since we have build context set to MOQUI directory, we
+# can easily copy all necessary files
+COPY runtime runtime/.
+COPY framework framework/.
+COPY moqui-util moqui-util/.
+COPY *.* .
 
 RUN gradle wrapper
 RUN ./gradlew build
 RUN ./gradlew load -Dmoqui.conf.dev=${MOQUI_CONF}
 
-FROM openjdk:11-jdk-slim
-MAINTAINER dataquest <info@dataquest.sk>
-
-# copy required files
 WORKDIR /opt/moqui
-COPY --from=TEMP_BUILD_IMAGE /opt/moqui-source/*.war /opt/.
-
-COPY WEB-INF WEB-INF
-COPY META-INF META-INF
-COPY *.class ./
-COPY execlib execlib
-COPY runtime runtime
+RUN cp /opt/moqui-source/moqui-plus-runtime.war .
+RUN unzip moqui-plus-runtime.war
 
 # exposed as volumes for configuration purposes
 VOLUME ["/opt/moqui/runtime/conf", "/opt/moqui/runtime/lib", "/opt/moqui/runtime/classes"]

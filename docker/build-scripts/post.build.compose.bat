@@ -17,39 +17,32 @@ if [%2] == [] (
 REM get into the simple-build directory
 pushd ..\simple
 
-REM unzip built application
-7z x ..\%MOQUI_HOME%\moqui-plus-runtime.war
-
-REM copy source code
-mkdir moqui-source
-xcopy /E /i ..\%MOQUI_HOME%\runtime moqui-source\runtime
-xcopy /E /i ..\%MOQUI_HOME%\framework moqui-source\framework
-xcopy /E /i ..\%MOQUI_HOME%\moqui-util moqui-source\moqui-util
-REM xcopy /E /i ..\%MOQUI_HOME%\gradle moqui-source\gradle
-xcopy ..\%MOQUI_HOME%\*.* moqui-source
-
-REM 1. run database (inside separate component)
-docker run -d --rm --name dev-postgres -e POSTGRES_PASSWORD=postgres -e PGPORT=5431 -e POSTGRES_HOST_AUTH_METHOD=trust -p 5431:5431 --network=dtq-int postgres
-cat ./CreateDatabase.sql | docker exec -i dev-postgres psql -U postgres -d postgres
+REM 1. create database server (inside separate component) and fill it
+docker-compose -p pg-dump   -f create-database.yml build --no-cache
+docker-compose -p pg-dump   -f create-database.yml up -d
 
 REM 2. run application component (inside separate component as well) - this is the component that is being built
+REM this will actually initialize the database
+
+REM fill database
+docker-compose ^
+    -p moqui-fill ^
+    -f fill-database.yml ^
+    build ^
+    --no-cache
+
+cat ./DumpDatabase.sql | docker exec -i dev-postgres su postgres
+
+REM stop temp database
 
 
 REM RUN IN ENTIRETY
 REM set the project name to 'moqui', network will be called 'moqui_default'
-docker-compose -f ../%COMP_FILE% -p moqui-dynamic --verbose up -d --build
+REM docker-compose -f ../%COMP_FILE% -p moqui-dynamic --verbose up -d --build
 
-REM docker stop dev-postgres
 
-REM delete all that remains
-rmdir /Q /S META-INF
-rmdir /Q /S WEB-INF
-rmdir /Q /S execlib
-rmdir /Q /S runtime
-del *.class
-del Procfile
-
-rmdir /Q /S moqui-source
+docker-compose -p moqui-fill -f fill-database.yml down --rmi local -v
+docker-compose -p pg-dump -f create-database.yml down --rmi local -v
 
 REM return back to original dir
 popd
