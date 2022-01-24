@@ -3,8 +3,8 @@ services:
   moqui-load-server:
     image: moqui-load-server
     build:
-      context: ./../..
-      dockerfile: docker/gradle-tasks/Dockerfile-load-in-build-jdk-11
+      context: ./../../..
+      dockerfile: docker/gradle-tasks/fill-database/Dockerfile-load-in-build-jdk-11
       args:
         MOQUI_CONF: conf/MoquiLoadConf.xml
         GRADLE_VERSION: 5.6.4

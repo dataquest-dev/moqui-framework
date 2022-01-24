@@ -2,7 +2,7 @@ ECHO OFF
 ECHO "Creating database dump for purpose of having a clear and filled database"
 
 REM get into the simple-build directory
-pushd ..\gradle-tasks
+pushd ..\gradle-tasks\fill-database
 
 REM 1. create database server (inside separate component) and fill it
 docker-compose -p pg-dump   -f create-database.yml build --no-cache
