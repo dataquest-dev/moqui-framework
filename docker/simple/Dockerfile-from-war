@@ -7,7 +7,7 @@ MAINTAINER dataquest <info@dataquest.sk>
 WORKDIR /opt/moqui
 
 # for running from the war directly, preferred approach unzips war in advance (see docker-build.sh that does this)
-COPY backend-dev/moqui-plus-runtime.war .
+COPY moqui-plus-runtime.war .
 RUN unzip moqui-plus-runtime.war
 
 # exposed as volumes for configuration purposes
