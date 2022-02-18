@@ -4,8 +4,13 @@
 FROM openjdk:12-jdk-alpine
 MAINTAINER dataquest <info@dataquest.sk>
 
-WORKDIR /opt/moqui
+RUN apk update && apk add netcat-openbsd dos2unix
 
+WORKDIR /opt
+COPY docker/wait-for-connectivity.sh .
+RUN dos2unix wait-for-connectivity.sh
+
+WORKDIR /opt/moqui
 # for running from the war directly, preferred approach unzips war in advance (see docker-build.sh that does this)
 COPY moqui-plus-runtime.war .
 RUN unzip moqui-plus-runtime.war
@@ -14,7 +19,6 @@ RUN unzip moqui-plus-runtime.war
 VOLUME ["/opt/moqui/runtime/conf", "/opt/moqui/runtime/lib", "/opt/moqui/runtime/classes", "/opt/moqui/runtime/ecomponent"]
 # exposed as volumes to persist data outside the container, recommended
 VOLUME ["/opt/moqui/runtime/log", "/opt/moqui/runtime/txlog", "/opt/moqui/runtime/sessions", "/opt/moqui/runtime/db", "/opt/moqui/runtime/elasticsearch"]
-
 
 # Main Servlet Container Port
 EXPOSE 80
