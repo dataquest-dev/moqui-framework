@@ -17,7 +17,7 @@
     </repository>
 
     <!-- Where to get runtime directory if not present -->
-    <runtime name="moqui-runtime" group="mrovnanik" version="1.0.0" branch="production" repository="github-ssh"/>
+    <runtime name="moqui-runtime" group="dataquest-dev" version="1.0.0" branch="feat-gradle-version-update" repository="github-ssh"/>
 
     <!-- Moqui Tool Components -->
     <component name="moqui-atomikos" group="moqui" version="1.0.0" branch="master" repository="github-ssh"/>
@@ -32,5 +32,6 @@
 	<!-- Custom-built Components -->
     <component name="moqui-basic-setup" group="dataquest-dev" version="" branch="master" repository="github-ssh"/>      <!-- no releases -->
     <component name="moqui-mtx-api" group="dataquest-dev" version="" branch="master" repository="github-ssh"/>      <!-- no releases -->
+    <component name="moqui-dev-api" group="dataquest-dev" version="" branch="master" repository="github-ssh"/>      <!-- no releases -->
     <component name="moqui-backend-store" group="dataquest-dev" version="" branch="master" repository="github-ssh"/>      <!-- no releases -->
 </addons>
