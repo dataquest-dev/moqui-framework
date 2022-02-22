@@ -193,21 +193,22 @@ dependencies {
 
     // ========== test dependencies ==========
     // spock-core depends on groovy-all but we are including selected groovy modules, so don't get its dependencies
-    testImplementation module('org.spockframework:spock-core:1.3-groovy-2.5') // Apache 2.0
-    testImplementation 'junit:junit:4.13.1' // Apache 2.0
+    testImplementation module('org.spockframework:spock-core:2.0-groovy-3.0') // Apache 2.0
+    testImplementation 'org.opentest4j:opentest4j:1.2.0'
+    testImplementation 'junit:junit:4.13.2' // Apache 2.0
     testImplementation 'org.hamcrest:hamcrest-core:2.2' // BSD 3-Clause
 
     // ========== executable war dependencies ==========
     // Jetty
     // NOTE: update to Jetty 9.4.25.v20191220 caused issue on response.getWriter().write(String): Internal error processing request: java.lang.IllegalStateException: s=OPEN,api=BLOCKED,sc=false,e=null
-    execWarRuntimeOnly 'org.eclipse.jetty:jetty-server:9.4.35.v20201120' // Apache 2.0
-    execWarRuntimeOnly 'org.eclipse.jetty:jetty-webapp:9.4.35.v20201120' // Apache 2.0
-    execWarRuntimeOnly 'org.eclipse.jetty:jetty-jndi:9.4.35.v20201120' // Apache 2.0
+    execWarRuntimeOnly 'org.eclipse.jetty:jetty-server:9.4.43.v20210629' // Apache 2.0
+    execWarRuntimeOnly 'org.eclipse.jetty:jetty-webapp:9.4.43.v20210629' // Apache 2.0
+    execWarRuntimeOnly 'org.eclipse.jetty:jetty-jndi:9.4.43.v20210629' // Apache 2.0
     execWarRuntimeOnly module('org.eclipse.jetty.websocket:javax-websocket-server-impl:9.4.35.v20201120') // Apache 2.0
-    execWarRuntimeOnly ('org.eclipse.jetty.websocket:javax-websocket-client-impl:9.4.35.v20201120') { // Apache 2.0
+    execWarRuntimeOnly ('org.eclipse.jetty.websocket:javax-websocket-client-impl:9.4.43.v20210629') { // Apache 2.0
         exclude group: 'javax.websocket' } // we have the full websocket API, including the client one causes problems
     execWarRuntimeOnly 'javax.websocket:javax.websocket-api:1.0' // using 1.0, don't update to 1.1 until used in Jetty, Tomcat, etc
-    execWarRuntimeOnly ('org.eclipse.jetty.websocket:websocket-server:9.4.35.v20201120') // Apache 2.0
+    execWarRuntimeOnly ('org.eclipse.jetty.websocket:websocket-server:9.4.43.v20210629') // Apache 2.0
     // only include this if using Endpoint and MessageHandler annotations:
     // execWarRuntimeOnly ('org.eclipse.jetty:jetty-annotations:9.4.35.v20201120') // Apache 2.0
 }
