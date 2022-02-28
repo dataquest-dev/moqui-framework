@@ -14,4 +14,3 @@ include getDirectoryProjects('base-component')
 include getDirectoryProjects('mantle')
 include getDirectoryProjects('component')
 include getDirectoryProjects('ecomponent')
-//innocent test purpose comment
