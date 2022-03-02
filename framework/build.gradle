@@ -228,7 +228,7 @@ test {
     dependsOn cleanTest
 
     // comment out if you need to run specific tests
-    // include '**/*MoquiSuite.class'
+    include '**/*MoquiSuite.class'
 
     useJUnitPlatform()
 
