@@ -18,5 +18,4 @@ services:
 
 networks:
   dtq-int:
-    external:
-      name: dtq-int
+    name: dtq-int
