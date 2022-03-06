@@ -1,6 +1,6 @@
 package dtq.rockycube.endpoint
 
-import dtq.rockycube.entity.MultiEntityHandler
+import dtq.rockycube.entity.MasterEntityHandler
 import org.moqui.Moqui
 import org.moqui.context.ExecutionContext
 import org.moqui.entity.EntityCondition
@@ -19,14 +19,14 @@ class EndpointServiceHandler {
     protected final static Logger logger = LoggerFactory.getLogger(EndpointServiceHandler.class);
     private ExecutionContext ec
     private ExecutionContextFactoryImpl ecfi
-    private MultiEntityHandler meh
+    private MasterEntityHandler meh
 
     private static String CONST_ALLOWED_FIELDS = 'allowedFields'
 
     EndpointServiceHandler() {
         this.ec = Moqui.getExecutionContext()
         this.ecfi = (ExecutionContextFactoryImpl) Moqui.getExecutionContextFactory()
-        this.meh = new MultiEntityHandler(this.ec)
+        this.meh = new MasterEntityHandler(this.ec)
     }
 
     private EntityConditionImplBase extractQuery(Object term)

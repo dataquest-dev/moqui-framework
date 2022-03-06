@@ -16,6 +16,7 @@ package org.moqui.impl
 import dtq.rockycube.query.SqlExecutor
 import org.moqui.context.ElasticFacade
 import org.moqui.context.ExecutionContext
+import org.moqui.impl.entity.EntityJavaUtil
 
 import java.sql.Connection
 import org.slf4j.Logger
@@ -52,6 +53,24 @@ class ViUtilities {
     public static boolean isAlphabetic(String s){
         String pattern= '^[a-zA-Z]*$'
         return s.matches(pattern);
+    }
+
+    public static String formattedString(String conversionType, String input)
+    {
+        // EntityJavaUtil - for the sake of converting strings
+        EntityJavaUtil util = new EntityJavaUtil()
+
+        switch (conversionType)
+        {
+            case 'underscoredToCamelCase-firstUpper':
+                return util.underscoredToCamelCase(input, true)
+                break
+            case 'underscoredToCamelCase':
+                return util.underscoredToCamelCase(input, false)
+                break
+            default:
+                return null
+        }
     }
 
     static final String removeCommas(String inputValue) {
