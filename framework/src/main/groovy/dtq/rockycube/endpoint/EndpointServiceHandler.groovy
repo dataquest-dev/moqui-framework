@@ -124,17 +124,54 @@ class EndpointServiceHandler {
         }
     }
 
-    public HashMap serveEndpoint()
+    public HashMap deleteEntityData()
+    {
+        def entityName = (String) ec.context.entityName
+        def term = (ArrayList) ec.context.term?:[]
+
+        // query condition setup
+        EntityCondition queryCondition = this.extractQuery(term)
+
+        def toDeleteSearch = ec.entity.find(entityName).condition(queryCondition)
+        logger.debug("DELETE: entityName/term: ${entityName}/${queryCondition}")
+
+        // convert to list
+        def toDelete = toDeleteSearch.list()
+
+        // if no records deleted, quit, with false flag
+        if (toDelete.size() == 0)
+        {
+            return [
+                    result: false,
+                    message: "No records to delete were found"
+            ]
+        }
+
+        // store items being deleted
+        def deleted = []
+        toDelete.each {it->
+            deleted.push(it)
+        }
+
+        return [
+                result: true,
+                message: "Records deleted (${deleted.size()})",
+                data: deleted
+        ]
+    }
+
+
+    public HashMap fetchEntityData()
     {
         def entityName = (String) ec.context.entityName
         def term = (ArrayList) ec.context.term?:[]
         def inputIndex = (Integer) ec.context.index?:1
         def pageSize = (Integer) ec.context.size?:20
         def orderBy = (ArrayList) ec.context.orderBy?:[]
-        ec.logger.debug("ec.context.args: ${ec.context.args}")
+        logger.debug("ec.context.args: ${ec.context.args}")
         HashMap<String, Object> args = (HashMap<String, Object>) ec.context.args?:[:]
 
-        // do we have an entity
+        // do we have an entity?
         if (!entityName) return [result: false, message: 'Missing entity name']
 
         // modify index
@@ -149,7 +186,7 @@ class EndpointServiceHandler {
 
         // query condition setup
         EntityCondition queryCondition = this.extractQuery(term)
-        logger.debug("entityName/term/index/size: ${entityName}/${queryCondition}/${pageIndex}/${pageSize}")
+        logger.debug("FETCH: entityName/term/index/size: ${entityName}/${queryCondition}/${pageIndex}/${pageSize}")
 
         // pagination info
         def pagination = this.fetchPaginationInfo(entityName, pageIndex, pageSize, queryCondition)

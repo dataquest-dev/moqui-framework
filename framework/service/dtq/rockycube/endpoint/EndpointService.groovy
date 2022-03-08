@@ -1,4 +1,16 @@
 import dtq.rockycube.endpoint.EndpointServiceHandler
 
-EndpointServiceHandler ech = new EndpointServiceHandler()
-return ech.serveEndpoint()
+def loadFromEntity()
+{
+    EndpointServiceHandler ech = new EndpointServiceHandler()
+    ec.logger.debug("Executing loadFromEntity method")
+    return ech.fetchEntityData()
+}
+
+def deleteEntity()
+{
+    EndpointServiceHandler ech = new EndpointServiceHandler()
+    ec.logger.debug("Executing deleteEntity method")
+    return ech.deleteEntityData()
+}
+
