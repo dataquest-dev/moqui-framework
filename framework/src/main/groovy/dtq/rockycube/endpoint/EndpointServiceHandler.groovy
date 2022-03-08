@@ -128,6 +128,7 @@ class EndpointServiceHandler {
     {
         def entityName = (String) ec.context.entityName
         def term = (ArrayList) ec.context.term?:[]
+        HashMap<String, Object> args = (HashMap<String, Object>) ec.context.args?:[:]
 
         // query condition setup
         EntityCondition queryCondition = this.extractQuery(term)
