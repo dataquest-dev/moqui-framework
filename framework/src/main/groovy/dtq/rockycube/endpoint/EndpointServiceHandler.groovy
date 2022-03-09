@@ -93,6 +93,9 @@ class EndpointServiceHandler {
 
     private void calculateDependencies()
     {
+        // fill in defaults if no arguments passed
+        this.checkArgsSetup(args)
+
         // query condition setup
         this.queryCondition = this.extractQueryCondition(term)
         logger.debug("entityName/term/index/size: ${entityName}/${queryCondition}/${pageIndex}/${pageSize}")
@@ -154,7 +157,7 @@ class EndpointServiceHandler {
      * Fills arguments with some defaults, should it be necessary
      * @param args
      */
-    private void checkGetArgsSetup(HashMap<String, Object> args)
+    private void checkArgsSetup(HashMap<String, Object> args)
     {
         // by default, all fields are allowed
         if (!args.containsKey(CONST_ALLOWED_FIELDS)) args.put(CONST_ALLOWED_FIELDS, '*')
@@ -239,9 +242,6 @@ class EndpointServiceHandler {
 
     public HashMap fetchEntityData()
     {
-        // fill in defaults if no arguments passed
-        this.checkGetArgsSetup(args)
-
         // pagination info
         def pagination = this.fetchPaginationInfo(entityName, pageIndex, pageSize, queryCondition)
         logger.debug("pagination: ${pagination}")
