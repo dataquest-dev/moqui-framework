@@ -5,6 +5,7 @@ import org.moqui.Moqui
 import org.moqui.context.ExecutionContext
 import org.moqui.entity.EntityCondition
 import org.moqui.entity.EntityException
+import org.moqui.entity.EntityList
 import org.moqui.entity.EntityValue
 import org.moqui.impl.context.ExecutionContextFactoryImpl
 import org.moqui.impl.entity.EntityDefinition
@@ -23,13 +24,98 @@ class EndpointServiceHandler {
 
     private static String CONST_ALLOWED_FIELDS = 'allowedFields'
 
+    /*
+    REQUEST ATTRIBUTES
+    */
+    private String entityName
+    private ArrayList term
+    private Integer inputIndex = 1
+    private Integer pageSize
+    private ArrayList orderBy
+    private HashMap<String, Object> args
+
+    // variables extracted
+    private EntityDefinition ed
+    private EntityConditionImplBase queryCondition
+    private Integer pageIndex
+
     EndpointServiceHandler() {
         this.ec = Moqui.getExecutionContext()
         this.ecfi = (ExecutionContextFactoryImpl) Moqui.getExecutionContextFactory()
         this.meh = new MasterEntityHandler(this.ec)
+
+        // initial fill
+        this.fillRequestVariables()
+
+        // do we have an entity?
+        if (!entityName) throw new EntityException("Missing entity name")
+
+        // subsequent calculations
+        this.calculateDependencies()
     }
 
-    private EntityConditionImplBase extractQuery(Object term)
+    private ArrayList fillResultset(EntityList entities)
+    {
+        def res = []
+        for (EntityValue ev in entities)
+        {
+            HashMap<String, Object> recordMap = [:]
+            // logger.info("args.allowedFields: ${args[CONST_ALLOWED_FIELDS]}")
+
+            ev.entrySet().each {it->
+                switch(args[CONST_ALLOWED_FIELDS].getClass().simpleName)
+                {
+                    case 'String':
+                        def afld = (String) args[CONST_ALLOWED_FIELDS]
+                        if (afld == '*') recordMap.put(it.key, it.value)
+                        if (afld == it.key) recordMap.put(it.key, it.value)
+                        break
+                    case 'ArrayList':
+                        def aflds = (ArrayList) args[CONST_ALLOWED_FIELDS]
+                        if (aflds.contains(it.key)) recordMap.put(it.key, it.value)
+                        break
+                    default:
+                        // do nothing
+                        break
+                }
+            }
+
+            // handle specialities
+            this.manipulateRecordId(recordMap)
+            this.manipulateExtraFields(recordMap)
+
+            // add to output, sorted
+            res.add(recordMap.sort({m1, m2 -> m1.key <=> m2.key}))
+        }
+
+        return res
+    }
+
+    private void calculateDependencies()
+    {
+        // query condition setup
+        this.queryCondition = this.extractQueryCondition(term)
+        logger.debug("entityName/term/index/size: ${entityName}/${queryCondition}/${pageIndex}/${pageSize}")
+
+        // modify index
+        this.pageIndex = Math.max(inputIndex - 1, 0)
+
+        // entity definition is a must
+        this.ed = this.meh.getDefinition(entityName, false)
+        if (!this.ed) throw new EntityException('Entity definition not found, cannot continue with populating service output')
+    }
+
+    private void fillRequestVariables()
+    {
+        this.entityName = (String) ec.context.entityName
+        this.term = (ArrayList) ec.context.term?:[]
+        this.inputIndex = (Integer) ec.context.index?:1
+        this.pageSize = (Integer) ec.context.size?:20
+        this.orderBy = (ArrayList) ec.context.orderBy?:[]
+        this.args = ec.context.args?:[:] as HashMap<String, Object>
+    }
+
+    private EntityConditionImplBase extractQueryCondition(Object term)
     {
         // no Strings as term
         if (term.getClass().simpleName == "String") throw new EntityException("Unsupported type for Term: String")
@@ -68,13 +154,13 @@ class EndpointServiceHandler {
      * Fills arguments with some defaults, should it be necessary
      * @param args
      */
-    private void checkArgsSetup(HashMap<String, Object> args)
+    private void checkGetArgsSetup(HashMap<String, Object> args)
     {
         // by default, all fields are allowed
         if (!args.containsKey(CONST_ALLOWED_FIELDS)) args.put(CONST_ALLOWED_FIELDS, '*')
     }
 
-    private void manipulateRecordId(HashMap<String, Object> record, HashMap<String, Object> args, EntityDefinition ed)
+    private void manipulateRecordId(HashMap<String, Object> record)
     {
         if (!args.get('renameId', null)) return
 
@@ -110,7 +196,7 @@ class EndpointServiceHandler {
         record.remove(idFieldName)
     }
 
-    private void manipulateExtraFields(HashMap<String, Object> record, HashMap<String, Object> args, EntityDefinition ed)
+    private void manipulateExtraFields(HashMap<String, Object> record)
     {
         if (!args.get('removeFields', null)) return
 
@@ -126,13 +212,6 @@ class EndpointServiceHandler {
 
     public HashMap deleteEntityData()
     {
-        def entityName = (String) ec.context.entityName
-        def term = (ArrayList) ec.context.term?:[]
-        HashMap<String, Object> args = (HashMap<String, Object>) ec.context.args?:[:]
-
-        // query condition setup
-        EntityCondition queryCondition = this.extractQuery(term)
-
         def toDeleteSearch = ec.entity.find(entityName).condition(queryCondition)
         logger.debug("DELETE: entityName/term: ${entityName}/${queryCondition}")
 
@@ -149,10 +228,7 @@ class EndpointServiceHandler {
         }
 
         // store items being deleted
-        def deleted = []
-        toDelete.each {it->
-            deleted.push(it)
-        }
+        def deleted = this.fillResultset(toDelete)
 
         return [
                 result: true,
@@ -161,33 +237,10 @@ class EndpointServiceHandler {
         ]
     }
 
-
     public HashMap fetchEntityData()
     {
-        def entityName = (String) ec.context.entityName
-        def term = (ArrayList) ec.context.term?:[]
-        def inputIndex = (Integer) ec.context.index?:1
-        def pageSize = (Integer) ec.context.size?:20
-        def orderBy = (ArrayList) ec.context.orderBy?:[]
-        logger.debug("ec.context.args: ${ec.context.args}")
-        HashMap<String, Object> args = (HashMap<String, Object>) ec.context.args?:[:]
-
-        // do we have an entity?
-        if (!entityName) return [result: false, message: 'Missing entity name']
-
-        // modify index
-        Integer pageIndex = Math.max(inputIndex - 1, 0)
-
-        // entity definition is a must
-        EntityDefinition ed = this.meh.getDefinition(entityName, false)
-        if (!ed) return [result: false, message: 'Entity definition not found, cannot continue with populating service output']
-
         // fill in defaults if no arguments passed
-        this.checkArgsSetup(args)
-
-        // query condition setup
-        EntityCondition queryCondition = this.extractQuery(term)
-        logger.debug("FETCH: entityName/term/index/size: ${entityName}/${queryCondition}/${pageIndex}/${pageSize}")
+        this.checkGetArgsSetup(args)
 
         // pagination info
         def pagination = this.fetchPaginationInfo(entityName, pageIndex, pageSize, queryCondition)
@@ -201,41 +254,9 @@ class EndpointServiceHandler {
         // order by columns
         if (orderBy) evs.orderBy(orderBy)
 
-        def res = []
-        for (EntityValue ev in evs.list())
-        {
-            HashMap<String, Object> recordMap = [:]
-            // logger.info("args.allowedFields: ${args[CONST_ALLOWED_FIELDS]}")
-
-            ev.entrySet().each {it->
-                switch(args[CONST_ALLOWED_FIELDS].getClass().simpleName)
-                {
-                    case 'String':
-                        def afld = (String) args[CONST_ALLOWED_FIELDS]
-                        if (afld == '*') recordMap.put(it.key, it.value)
-                        if (afld == it.key) recordMap.put(it.key, it.value)
-                        break
-                    case 'ArrayList':
-                        def aflds = (ArrayList) args[CONST_ALLOWED_FIELDS]
-                        if (aflds.contains(it.key)) recordMap.put(it.key, it.value)
-                        break
-                    default:
-                        // do nothing
-                        break
-                }
-            }
-
-            // handle specialities
-            this.manipulateRecordId(recordMap, args, ed)
-            this.manipulateExtraFields(recordMap, args, ed)
-
-            // add to output, sorted
-            res.add(recordMap.sort({m1, m2 -> m1.key <=> m2.key}))
-        }
-
         return [
                 result: true,
-                data: res,
+                data: this.fillResultset(evs.list()),
                 pagination: pagination
         ]
     }
