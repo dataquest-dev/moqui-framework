@@ -124,11 +124,58 @@ class EndpointServiceHandler {
         if (term.getClass().simpleName == "String") throw new EntityException("Unsupported type for Term: String")
 
         def resListCondition = []
-        for (def singleTerm in term) {
+        for (HashMap<String, Object> singleTerm in term) {
+            def compOperator = EntityCondition.ComparisonOperator.EQUALS
+
+            if (singleTerm.containsKey("operator"))
+            {
+                switch(singleTerm["operator"].toString().toLowerCase())
+                {
+                    case "=":
+                    case "eq":
+                    case "equal":
+                    case "equals":
+                        // do nothing
+                        break
+                    case "!=":
+                    case "not-equal":
+                        compOperator = EntityCondition.ComparisonOperator.NOT_EQUAL
+                        break
+                    case ">":
+                    case "gt":
+                        compOperator = EntityCondition.ComparisonOperator.GREATER_THAN
+                        break
+                    case ">=":
+                    case "gte":
+                        compOperator = EntityCondition.ComparisonOperator.GREATER_THAN_EQUAL_TO
+                        break
+                    case "<":
+                    case "lt":
+                        compOperator = EntityCondition.ComparisonOperator.LESS_THAN
+                        break
+                    case "<=":
+                    case "lte":
+                        compOperator = EntityCondition.ComparisonOperator.LESS_THAN_EQUAL_TO
+                        break
+                    case "like":
+                        compOperator = EntityCondition.ComparisonOperator.LIKE
+                        break
+                    case "not-like":
+                        compOperator = EntityCondition.ComparisonOperator.NOT_LIKE
+                        break
+                    case "in":
+                        compOperator = EntityCondition.ComparisonOperator.IN
+                        break
+                    case "not-in":
+                        compOperator = EntityCondition.ComparisonOperator.NOT_IN
+                        break
+                }
+            }
+
             resListCondition.add(
                     new FieldValueCondition(
                             new ConditionField((String) singleTerm.field),
-                            EntityCondition.ComparisonOperator.EQUALS,
+                            compOperator,
                             (Object) singleTerm.value
                     )
             )
