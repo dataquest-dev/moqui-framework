@@ -23,6 +23,7 @@ class EndpointServiceHandler {
     private MasterEntityHandler meh
 
     private static String CONST_ALLOWED_FIELDS = 'allowedFields'
+    private static String CONST_CONVERT_OUTPUT_TO_LIST = 'convertToList'
 
     /*
     REQUEST ATTRIBUTES
@@ -85,16 +86,34 @@ class EndpointServiceHandler {
             this.manipulateExtraFields(recordMap)
 
             // add to output, sorted
-            res.add(recordMap.sort({m1, m2 -> m1.key <=> m2.key}))
-        }
+            def sortedMap = recordMap.sort({m1, m2 -> m1.key <=> m2.key})
 
+            // change to list, if set in such way
+            if (args[CONST_CONVERT_OUTPUT_TO_LIST] == true)
+            {
+                def conv2List = []
+                sortedMap.each {it->
+                    conv2List.push(it.value)
+                }
+
+                if (conv2List.size() == 1)
+                {
+                    res.add(conv2List[0])
+                } else {
+                    res.add(conv2List)
+                }
+
+            } else {
+                res.add(sortedMap)
+            }
+        }
         return res
     }
 
     private void calculateDependencies()
     {
         // fill in defaults if no arguments passed
-        this.checkArgsSetup(args)
+        this.checkArgsSetup()
 
         // query condition setup
         this.queryCondition = this.extractQueryCondition(term)
@@ -127,6 +146,7 @@ class EndpointServiceHandler {
         for (HashMap<String, Object> singleTerm in term) {
             def compOperator = EntityCondition.ComparisonOperator.EQUALS
 
+            // logger.info("singleTerm.value.getClass() = ${singleTerm.value.getClass().simpleName}")
             if (singleTerm.containsKey("operator"))
             {
                 switch(singleTerm["operator"].toString().toLowerCase())
@@ -165,9 +185,21 @@ class EndpointServiceHandler {
                         break
                     case "in":
                         compOperator = EntityCondition.ComparisonOperator.IN
+                        if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
                         break
                     case "not-in":
                         compOperator = EntityCondition.ComparisonOperator.NOT_IN
+                        if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
+                        break
+                    case "between":
+                        compOperator = EntityCondition.ComparisonOperator.BETWEEN
+                        if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
+                        if (singleTerm.value.size() != 2) throw new EntityException("Operator requires exactly two values in array")
+                        break
+                    case "not-between":
+                        compOperator = EntityCondition.ComparisonOperator.NOT_BETWEEN
+                        if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
+                        if (singleTerm.value.size() != 2) throw new EntityException("Operator requires exactly two values in array")
                         break
                 }
             }
@@ -204,10 +236,11 @@ class EndpointServiceHandler {
      * Fills arguments with some defaults, should it be necessary
      * @param args
      */
-    private void checkArgsSetup(HashMap<String, Object> args)
+    private void checkArgsSetup()
     {
         // by default, all fields are allowed
         if (!args.containsKey(CONST_ALLOWED_FIELDS)) args.put(CONST_ALLOWED_FIELDS, '*')
+        if (!args.containsKey(CONST_CONVERT_OUTPUT_TO_LIST)) args.put(CONST_CONVERT_OUTPUT_TO_LIST, false)
     }
 
     private void manipulateRecordId(HashMap<String, Object> record)
