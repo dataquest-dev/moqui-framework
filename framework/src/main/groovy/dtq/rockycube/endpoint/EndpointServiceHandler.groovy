@@ -24,6 +24,7 @@ class EndpointServiceHandler {
 
     private static String CONST_ALLOWED_FIELDS = 'allowedFields'
     private static String CONST_CONVERT_OUTPUT_TO_LIST = 'convertToList'
+    private static String CONST_ALLOW_TIMESTAMPS = 'allowTimestamps'
 
     /*
     REQUEST ATTRIBUTES
@@ -64,21 +65,7 @@ class EndpointServiceHandler {
             // logger.info("args.allowedFields: ${args[CONST_ALLOWED_FIELDS]}")
 
             ev.entrySet().each {it->
-                switch(args[CONST_ALLOWED_FIELDS].getClass().simpleName)
-                {
-                    case 'String':
-                        def afld = (String) args[CONST_ALLOWED_FIELDS]
-                        if (afld == '*') recordMap.put(it.key, it.value)
-                        if (afld == it.key) recordMap.put(it.key, it.value)
-                        break
-                    case 'ArrayList':
-                        def aflds = (ArrayList) args[CONST_ALLOWED_FIELDS]
-                        if (aflds.contains(it.key)) recordMap.put(it.key, it.value)
-                        break
-                    default:
-                        // do nothing
-                        break
-                }
+                if (addField(it.key)) recordMap.put(it.key, it.value)
             }
 
             // handle specialities
@@ -108,6 +95,38 @@ class EndpointServiceHandler {
             }
         }
         return res
+    }
+
+    private boolean addField(String fieldName)
+    {
+        // allow timestamps? must be explicitly set
+        def timestamps = ["lastUpdatedStamp", "creationTime"]
+        if (!args[CONST_ALLOW_TIMESTAMPS] && timestamps.contains(fieldName)) return false
+
+        switch(args[CONST_ALLOWED_FIELDS].getClass().simpleName)
+        {
+            case 'String':
+                def afld = (String) args[CONST_ALLOWED_FIELDS]
+                if (afld == '*') {
+                    return true
+                } else if (afld == fieldName) {
+                    return true
+                }
+                break
+            case 'ArrayList':
+                def aflds = (ArrayList) args[CONST_ALLOWED_FIELDS]
+                if (aflds.size() == 1 && aflds[0] == "*")
+                {
+                    return true
+                } else if (aflds.contains(fieldName))
+                {
+                    return true
+                }
+                break
+            default:
+                return false
+        }
+        return false
     }
 
     private void calculateDependencies()
@@ -241,6 +260,7 @@ class EndpointServiceHandler {
         // by default, all fields are allowed
         if (!args.containsKey(CONST_ALLOWED_FIELDS)) args.put(CONST_ALLOWED_FIELDS, '*')
         if (!args.containsKey(CONST_CONVERT_OUTPUT_TO_LIST)) args.put(CONST_CONVERT_OUTPUT_TO_LIST, false)
+        if (!args.containsKey(CONST_ALLOW_TIMESTAMPS)) args.put(CONST_ALLOW_TIMESTAMPS, false)
     }
 
     private void manipulateRecordId(HashMap<String, Object> record)
