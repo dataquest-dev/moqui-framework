@@ -118,9 +118,22 @@ class EndpointServiceHandler {
                 if (aflds.size() == 1 && aflds[0] == "*")
                 {
                     return true
-                } else if (aflds.contains(fieldName))
+                } else
                 {
-                    return true
+                    def forbiddenFields = []
+                    aflds.each {it->
+                        if (it.toString().startsWith('-')) forbiddenFields.add(it.toString().substring(1))
+                    }
+
+                    // forbidden fields
+                    if (forbiddenFields.contains(fieldName)) return false
+
+                    boolean allFieldsFlag = aflds.count {it->
+                        return it == "*"
+                    } == 1
+                    if (allFieldsFlag) return true
+                    if (aflds.contains(fieldName)) return true
+                    return false
                 }
                 break
             default:
