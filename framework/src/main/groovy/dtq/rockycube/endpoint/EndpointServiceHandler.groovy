@@ -56,43 +56,50 @@ class EndpointServiceHandler {
         this.calculateDependencies()
     }
 
+    private Object fillResultset(EntityValue single)
+    {
+        HashMap<String, Object> res = [:]
+        HashMap<String, Object> recordMap = [:]
+        // logger.info("args.allowedFields: ${args[CONST_ALLOWED_FIELDS]}")
+
+        single.entrySet().each {it->
+            if (!it.key) return
+            if (addField(it.key)) recordMap.put(it.key, it.value)
+        }
+
+        // handle specialities
+        this.manipulateRecordId(recordMap)
+        this.manipulateExtraFields(recordMap)
+
+        // add to output, sorted
+        def sortedMap = recordMap.sort({m1, m2 -> m1.key <=> m2.key})
+
+        // change to list, if set in such way
+        if (args[CONST_CONVERT_OUTPUT_TO_LIST] == true)
+        {
+            def conv2List = []
+            sortedMap.each {it->
+                conv2List.push(it.value)
+            }
+
+            if (conv2List.size() == 1)
+            {
+                return conv2List[0]
+            } else {
+                return conv2List
+            }
+
+        } else {
+            return sortedMap
+        }
+    }
+
     private ArrayList fillResultset(EntityList entities)
     {
         def res = []
         for (EntityValue ev in entities)
         {
-            HashMap<String, Object> recordMap = [:]
-            // logger.info("args.allowedFields: ${args[CONST_ALLOWED_FIELDS]}")
-
-            ev.entrySet().each {it->
-                if (addField(it.key)) recordMap.put(it.key, it.value)
-            }
-
-            // handle specialities
-            this.manipulateRecordId(recordMap)
-            this.manipulateExtraFields(recordMap)
-
-            // add to output, sorted
-            def sortedMap = recordMap.sort({m1, m2 -> m1.key <=> m2.key})
-
-            // change to list, if set in such way
-            if (args[CONST_CONVERT_OUTPUT_TO_LIST] == true)
-            {
-                def conv2List = []
-                sortedMap.each {it->
-                    conv2List.push(it.value)
-                }
-
-                if (conv2List.size() == 1)
-                {
-                    res.add(conv2List[0])
-                } else {
-                    res.add(conv2List)
-                }
-
-            } else {
-                res.add(sortedMap)
-            }
+            res.add(fillResultset(ev))
         }
         return res
     }
@@ -131,6 +138,7 @@ class EndpointServiceHandler {
                     boolean allFieldsFlag = aflds.count {it->
                         return it == "*"
                     } == 1
+
                     if (allFieldsFlag) return true
                     if (aflds.contains(fieldName)) return true
                     return false
@@ -326,6 +334,35 @@ class EndpointServiceHandler {
         }
     }
 
+    public HashMap createEntityData()
+    {
+        def data = ec.context.data?:[:]
+        if (data.getClass().simpleName == 'ArrayList') throw new EntityException("Creating multiple entities not supported")
+
+        HashMap createData = (HashMap) data
+        if (createData.isEmpty())
+        {
+            return [
+                    result: false,
+                    message: 'No data for creation'
+            ]
+        }
+
+        def created = ec.entity.makeValue(entityName)
+            .setAll(createData)
+            .setSequencedIdPrimary()
+            .create()
+
+        def newEntity = fillResultset(created)
+
+        return [
+                result: true,
+                message: "Records created (1)",
+                data: [newEntity]
+        ]
+    }
+
+
     public HashMap deleteEntityData()
     {
         def toDeleteSearch = ec.entity.find(entityName).condition(queryCondition)
@@ -371,6 +408,57 @@ class EndpointServiceHandler {
                 result: true,
                 data: this.fillResultset(evs.list()),
                 pagination: pagination
+        ]
+    }
+
+    public HashMap updateEntityData()
+    {
+        HashMap<String, Object> updateData = ec.context.data?:[:]
+        if (updateData.isEmpty())
+        {
+            return [
+                    result: false,
+                    message: 'No data for update found'
+            ]
+        }
+
+        def toUpdate = ec.entity.find(entityName)
+                .condition(queryCondition)
+                .forUpdate(true)
+        logger.debug("UPDATE: entityName/term: ${entityName}/${queryCondition}")
+
+        // if no records deleted, quit, with false flag
+        if (toUpdate.count() == 0)
+        {
+            return [
+                    result: false,
+                    message: "No record to update was found"
+            ]
+        }
+
+        // allow only single record update
+        if (toUpdate.count() > 1)
+        {
+            return [
+                    result: false,
+                    message: "Multiple records to update were found"
+            ]
+        }
+
+        def mod = toUpdate.one()
+
+        // set new values
+        updateData.each {it->
+            mod.set((String) it.key, it.value)
+        }
+
+        // save
+        mod.update()
+
+        return [
+                result: true,
+                message: "Records updated (1)",
+                data: fillResultset(toUpdate.list())
         ]
     }
 }
