@@ -30,7 +30,7 @@ class MasterEntityHandler {
 
         return iterator.find{ it ->
             ec.logger.info("Current iterator: ${it} [${it.getClass().simpleName}]")
-            if (!it) return
+            if (!it) return false
 
             String actualKey = it.key
             EntityDefinition actualEd = (EntityDefinition) it.value
