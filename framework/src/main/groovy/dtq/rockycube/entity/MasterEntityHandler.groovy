@@ -24,7 +24,11 @@ class MasterEntityHandler {
             ArrayList<String> allowedConversions,
             boolean looseMatch) {
 
+        ec.logger.info("Iterator class: ${iterator.getClass().simpleName}")
+
         return iterator.find{ it ->
+            ec.logger.info("Current iterator: ${it} [${it.getClass().simpleName}]")
+
             String actualKey = it.key
             EntityDefinition actualEd = (EntityDefinition) it.value
             boolean strictMatch = (actualKey == entityName)
