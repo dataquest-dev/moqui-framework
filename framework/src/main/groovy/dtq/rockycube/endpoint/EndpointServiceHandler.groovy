@@ -157,10 +157,10 @@ class EndpointServiceHandler {
 
         // query condition setup
         this.queryCondition = this.extractQueryCondition(term)
-        logger.info("entityName/term/index/size: ${entityName}/${queryCondition}/${pageIndex}/${pageSize}")
 
         // modify index
         this.pageIndex = Math.max(inputIndex - 1, 0)
+        logger.info("entityName/term/index/size: ${entityName}/${queryCondition}/${pageIndex}/${pageSize}")
 
         // entity definition is a must
         this.ed = this.meh.getDefinition(entityName, false)
