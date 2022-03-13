@@ -27,11 +27,7 @@ class MasterEntityHandler {
         ec.logger.info("Iterator class: ${iterator.getClass().simpleName}")
         ec.logger.info("Iterator size: ${iterator.size()}")
 
-
         return iterator.find{ it ->
-            ec.logger.info("Current iterator: ${it} [${it.getClass().simpleName}]")
-            if (!it) return false
-
             String actualKey = it.key
             EntityDefinition actualEd = (EntityDefinition) it.value
             boolean strictMatch = (actualKey == entityName)
