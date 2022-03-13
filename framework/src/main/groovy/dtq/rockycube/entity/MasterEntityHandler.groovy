@@ -30,7 +30,8 @@ class MasterEntityHandler {
             ec.logger.info("    item: ${it.key}")
         }
 
-        return iterator.find{it->
+        def res = iterator.find{it->
+            ec.logger.info("searching inside")
             String actualKey = it.key
             EntityDefinition actualEd = (EntityDefinition) it.value
             boolean strictMatch = (actualKey == entityName)
@@ -51,6 +52,8 @@ class MasterEntityHandler {
             }
         } as Map.Entry<K, V>
 
+        // for debugging purposes
+        return res
     }
 
     public EntityDefinition getDefinition(String entityName, boolean looseMatch = false, String groupName = null)
