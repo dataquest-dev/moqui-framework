@@ -30,7 +30,7 @@ class MasterEntityHandler {
             ec.logger.info("    item: ${it.key}")
         }
 
-        return iterator.find{ it ->
+        return iterator.find{it->
             String actualKey = it.key
             EntityDefinition actualEd = (EntityDefinition) it.value
             boolean strictMatch = (actualKey == entityName)
