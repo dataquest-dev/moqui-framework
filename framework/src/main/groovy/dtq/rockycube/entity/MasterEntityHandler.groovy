@@ -25,11 +25,12 @@ class MasterEntityHandler {
             boolean looseMatch) {
 
         ec.logger.info("Iterator class: ${iterator.getClass().simpleName}")
-        ec.logger.info("Iterator size: ${iterator.size()}")
+
+        iterator.each {it->
+            ec.logger.info("    item: ${it.key}")
+        }
 
         return iterator.find{ it ->
-            println("Key: ${it.key}: ${it.value}")
-
             String actualKey = it.key
             EntityDefinition actualEd = (EntityDefinition) it.value
             boolean strictMatch = (actualKey == entityName)
