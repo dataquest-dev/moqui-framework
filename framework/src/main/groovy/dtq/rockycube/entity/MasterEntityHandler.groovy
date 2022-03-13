@@ -28,6 +28,8 @@ class MasterEntityHandler {
         ec.logger.info("Iterator size: ${iterator.size()}")
 
         return iterator.find{ it ->
+            println("Key: ${it.key}: ${it.value}")
+
             String actualKey = it.key
             EntityDefinition actualEd = (EntityDefinition) it.value
             boolean strictMatch = (actualKey == entityName)
