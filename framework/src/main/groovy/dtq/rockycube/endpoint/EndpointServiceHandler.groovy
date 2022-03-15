@@ -25,6 +25,7 @@ class EndpointServiceHandler {
     private static String CONST_ALLOWED_FIELDS = 'allowedFields'
     private static String CONST_CONVERT_OUTPUT_TO_LIST = 'convertToList'
     private static String CONST_ALLOW_TIMESTAMPS = 'allowTimestamps'
+    private static String CONST_AUTO_CREATE_PKEY = 'autoCreatePrimaryKey'
 
     /*
     REQUEST ATTRIBUTES
@@ -278,10 +279,18 @@ class EndpointServiceHandler {
      */
     private void checkArgsSetup()
     {
-        // by default, all fields are allowed
+        // by default
+        //      all fields are allowed
         if (!args.containsKey(CONST_ALLOWED_FIELDS)) args.put(CONST_ALLOWED_FIELDS, '*')
+
+        //      we do not want list as output
         if (!args.containsKey(CONST_CONVERT_OUTPUT_TO_LIST)) args.put(CONST_CONVERT_OUTPUT_TO_LIST, false)
+
+        //      we do not want timestamp fields
         if (!args.containsKey(CONST_ALLOW_TIMESTAMPS)) args.put(CONST_ALLOW_TIMESTAMPS, false)
+
+        //      by default, let the entity manager create primary key
+        if (!args.containsKey(CONST_AUTO_CREATE_PKEY)) args.put(CONST_AUTO_CREATE_PKEY, true)
     }
 
     private void manipulateRecordId(HashMap<String, Object> record)
@@ -350,8 +359,15 @@ class EndpointServiceHandler {
 
         def created = ec.entity.makeValue(entityName)
             .setAll(createData)
-            .setSequencedIdPrimary()
-            .create()
+
+        // create primary key
+        if (args[CONST_AUTO_CREATE_PKEY] == true)
+        {
+            created.setSequencedIdPrimary()
+        }
+
+        // let it create
+        created.create()
 
         def newEntity = fillResultset(created)
 
