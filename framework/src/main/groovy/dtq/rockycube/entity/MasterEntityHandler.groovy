@@ -24,27 +24,42 @@ class MasterEntityHandler {
             ArrayList<String> allowedConversions,
             boolean looseMatch) {
 
-        return iterator.find{ it ->
+        def res = null
+        while (iterator.hasNext())
+        {
+            def it = iterator.next()
+
             String actualKey = it.key
             EntityDefinition actualEd = (EntityDefinition) it.value
             boolean strictMatch = (actualKey == entityName)
             // if group name set, confirm match
             if (groupName) strictMatch &= (actualEd.groupName == groupName)
-            if (strictMatch) return true
+            if (strictMatch)
+            {
+                res = it
+                break
+            }
 
             // quit if not set to loose match
-            if (!looseMatch) return false
+            if (!looseMatch) continue
 
-            // convert name to a camel case format
-            return allowedConversions.any { convType ->
+            boolean matchedLoosely = allowedConversions.any { convType ->
                 String convStringValue = ViUtilities.formattedString(convType, entityName)
                 if (!convStringValue) return false
                 boolean matches = actualKey.endsWith( entityName)
                 if (groupName) matches &= (actualEd.groupName == groupName)
                 return matches
             }
-        } as Map.Entry<K, V>
 
+            if (matchedLoosely)
+            {
+                res = it
+                break
+            }
+        }
+
+        // for debugging purposes
+        return res as Map.Entry<K, V>
     }
 
     public EntityDefinition getDefinition(String entityName, boolean looseMatch = false, String groupName = null)

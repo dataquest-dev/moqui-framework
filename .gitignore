@@ -24,6 +24,7 @@ build
 # runtime directory (separate repository so ignore directory entirely)
 /runtime
 /execwartmp
+/wartemp
 /docker/runtime
 
 # IntelliJ IDEA files

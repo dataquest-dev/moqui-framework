@@ -158,14 +158,14 @@ class EndpointServiceHandler {
 
         // query condition setup
         this.queryCondition = this.extractQueryCondition(term)
-        logger.debug("entityName/term/index/size: ${entityName}/${queryCondition}/${pageIndex}/${pageSize}")
 
         // modify index
         this.pageIndex = Math.max(inputIndex - 1, 0)
+        logger.info("entityName/term/index/size: ${entityName}/${queryCondition}/${pageIndex}/${pageSize}")
 
         // entity definition is a must
         this.ed = this.meh.getDefinition(entityName, false)
-        if (!this.ed) throw new EntityException('Entity definition not found, cannot continue with populating service output')
+        if (!this.ed) throw new EntityException("Entity definition not found [${entityName?:'NOT SET'}], cannot continue with populating service output")
     }
 
     private void fillRequestVariables()

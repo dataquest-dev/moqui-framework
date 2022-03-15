@@ -81,6 +81,8 @@ dependencies {
 }
 
 jar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
     manifest { attributes 'Implementation-Title': 'Moqui Utilities', 'Implementation-Version': version, 'Implementation-Vendor': 'Moqui Ecosystem' }
     from sourceSets.main.output
 }
