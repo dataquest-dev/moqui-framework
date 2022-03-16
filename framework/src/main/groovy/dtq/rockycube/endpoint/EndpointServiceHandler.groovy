@@ -247,7 +247,7 @@ class EndpointServiceHandler {
 
             resListCondition.add(
                     new FieldValueCondition(
-                            new ConditionField((String) singleTerm.columnKey),
+                            new ConditionField((String) singleTerm.field),
                             compOperator,
                             (Object) singleTerm.value
                     )
