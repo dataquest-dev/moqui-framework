@@ -41,6 +41,7 @@ class EndpointServiceHandler {
     private EntityDefinition ed
     private EntityConditionImplBase queryCondition
     private Integer pageIndex
+    private String dsType
 
     EndpointServiceHandler() {
         this.ec = Moqui.getExecutionContext()
@@ -55,6 +56,10 @@ class EndpointServiceHandler {
 
         // subsequent calculations
         this.calculateDependencies()
+
+        def ds = ec.entity.getDatasourceFactory(ed.groupName)
+        dsType = ds.getClass().simpleName
+        logger.info("Entity: ${dsType}")
     }
 
     private Object fillResultset(EntityValue single)
@@ -241,6 +246,9 @@ class EndpointServiceHandler {
                         compOperator = EntityCondition.ComparisonOperator.NOT_BETWEEN
                         if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
                         if (singleTerm.value.size() != 2) throw new EntityException("Operator requires exactly two values in array")
+                        break
+                    case "text":
+                        compOperator = EntityCondition.ComparisonOperator.TEXT
                         break
                 }
             }
