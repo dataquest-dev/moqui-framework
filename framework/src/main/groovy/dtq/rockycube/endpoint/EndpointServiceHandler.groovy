@@ -353,20 +353,40 @@ class EndpointServiceHandler {
 
     public HashMap createEntityData()
     {
-        def data = ec.context.data?:[:]
-        if (data.getClass().simpleName == 'ArrayList') throw new EntityException("Creating multiple entities not supported")
+        def data = ec.context.data
+        // ArrayList supported, this way we can run multiple create procedures in single moment
+        // if (data.getClass().simpleName.startsWith('ArrayList')) throw new EntityException("Creating multiple entities not supported")
 
-        HashMap createData = (HashMap) data
-        if (createData.isEmpty())
+        def itemsCreated = []
+
+        // different for array and hashmap
+        if (data instanceof HashMap || data instanceof LinkedHashMap)
         {
-            return [
-                    result: false,
-                    message: 'No data for creation'
-            ]
+            itemsCreated.push(this.createSingleEntity(data as HashMap))
+
+        } else {
+            data.each {HashMap it->
+                itemsCreated.add(this.createSingleEntity(it))
+            }
+        }
+
+        return [
+                result: true,
+                message: "Records created (${itemsCreated.size()})",
+                data: itemsCreated
+        ]
+    }
+
+    private createSingleEntity(HashMap singleEntityData)
+    {
+        if (singleEntityData.isEmpty())
+        {
+            // return empty map
+            return [:]
         }
 
         def created = ec.entity.makeValue(entityName)
-            .setAll(createData)
+                .setAll(singleEntityData)
 
         // create primary key
         if (args[CONST_AUTO_CREATE_PKEY] == true)
@@ -377,15 +397,8 @@ class EndpointServiceHandler {
         // let it create
         created.create()
 
-        def newEntity = fillResultset(created)
-
-        return [
-                result: true,
-                message: "Records created (1)",
-                data: [newEntity]
-        ]
+        return fillResultset(created)
     }
-
 
     public HashMap deleteEntityData()
     {
