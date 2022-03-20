@@ -370,11 +370,14 @@ class EndpointServiceHandler {
             }
         }
 
-        return [
+        def res = [
                 result: true,
-                message: "Records created (${itemsCreated.size()})",
-                data: itemsCreated
+                message: "Records created (${itemsCreated.size()})"
         ]
+
+        // do not add data if more than one record created
+        if (itemsCreated.size() == 1) res.put("data", itemsCreated)
+        return res
     }
 
     private createSingleEntity(HashMap singleEntityData)
