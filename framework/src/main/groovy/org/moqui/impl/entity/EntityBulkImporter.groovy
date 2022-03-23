@@ -1,14 +1,18 @@
 package org.moqui.impl.entity
 
+import org.moqui.context.ExecutionContext
 import org.moqui.entity.EntityValue
 import java.sql.PreparedStatement
 import java.sql.SQLException
 
 class EntityBulkImporter extends EntityQueryBuilder {
     private ArrayList<EntityValue> entityList = new ArrayList<>()
+    private ExecutionContext ec
+    private String groupName
 
     EntityBulkImporter(EntityDefinition entityDefinition, EntityFacadeImpl efi) {
         super(entityDefinition, efi)
+        this.groupName = entityDefinition.groupName
     }
 
     public void addEntity(EntityValue ev){
@@ -17,7 +21,7 @@ class EntityBulkImporter extends EntityQueryBuilder {
 
     public long insert() {
         FieldInfo[] fieldInfoArray = super.mainEntityDefinition.entityInfo.allFieldInfoArray;
-        this.useConnection(efi.getConnection("store"));
+        this.useConnection(efi.getConnection(groupName));
         Long imported = 0
         StringBuilder sql = this.sqlTopLevel;
         sql.append("INSERT INTO ").append(super.mainEntityDefinition.getFullTableName());
