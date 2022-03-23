@@ -5,6 +5,7 @@ import org.moqui.Moqui
 import org.moqui.context.ExecutionContext
 import org.moqui.entity.EntityCondition
 import org.moqui.entity.EntityException
+import org.moqui.entity.EntityFind
 import org.moqui.entity.EntityList
 import org.moqui.entity.EntityValue
 import org.moqui.impl.context.ExecutionContextFactoryImpl
@@ -408,7 +409,7 @@ class EndpointServiceHandler {
         def toDeleteSearch = ec.entity.find(entityName).condition(queryCondition)
         logger.debug("DELETE: entityName/term: ${entityName}/${queryCondition}")
 
-        // convert to list
+        // convert to list for message
         def toDelete = toDeleteSearch.list()
 
         // if no records deleted, quit, with false flag
@@ -418,6 +419,12 @@ class EndpointServiceHandler {
                     result: false,
                     message: "No records to delete were found"
             ]
+        }
+
+        for (EntityValue ev in toDeleteSearch)
+        {
+            // delete
+            ev.delete()
         }
 
         // store items being deleted
