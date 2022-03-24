@@ -4,6 +4,7 @@ import org.moqui.context.ExecutionContext
 import org.moqui.impl.ViUtilities
 import org.moqui.impl.entity.EntityDefinition
 import org.moqui.impl.entity.EntityFacadeImpl
+import java.util.regex.Pattern
 
 class MasterEntityHandler {
     // contexts and facades
@@ -64,12 +65,18 @@ class MasterEntityHandler {
 
     public EntityDefinition getDefinition(String entityName, boolean looseMatch = false, String groupName = null)
     {
+        // treat special entities
+        def pattern = Pattern.compile("(.+)@(?:.+)")
+        def match = pattern.matcher(entityName.toString())
+        def searchedEntityName = entityName
+        if (match.matches()) searchedEntityName = match.group(1)
+
         def allowedConversions =['underscoredToCamelCase-firstUpper']
 
         // 1. search among framework entities
         Map.Entry<String, Object> foundEntityDef = foundEntity(
                 efi.frameworkEntityDefinitions.iterator(),
-                entityName,
+                searchedEntityName,
                 groupName,
                 allowedConversions,
                 looseMatch)
@@ -78,7 +85,7 @@ class MasterEntityHandler {
             // 2. search in normal entities
             foundEntityDef = foundEntity(
                     efi.entityDefinitionCache.iterator(),
-                    entityName,
+                    searchedEntityName,
                     groupName,
                     allowedConversions,
                     true)
