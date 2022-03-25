@@ -10,6 +10,8 @@ import org.moqui.entity.EntityList
 import org.moqui.entity.EntityValue
 import org.moqui.impl.context.ExecutionContextFactoryImpl
 import org.moqui.impl.entity.EntityDefinition
+import org.moqui.impl.entity.EntityValueBase
+import org.moqui.impl.entity.FieldInfo
 import org.moqui.impl.entity.condition.ConditionField
 import org.moqui.impl.entity.condition.EntityConditionImplBase
 import org.moqui.impl.entity.condition.FieldValueCondition
@@ -71,7 +73,15 @@ class EndpointServiceHandler {
 
         single.entrySet().each {it->
             if (!it.key) return
-            if (addField(it.key)) recordMap.put(it.key, it.value)
+            if (addField(it.key)) {
+                // special treatment for JSONB
+
+                if (it.hasProperty('fi')) {
+                    logger.info("HAS fi")
+                }
+
+                recordMap.put(it.key, it.value)
+            }
         }
 
         // handle specialities
