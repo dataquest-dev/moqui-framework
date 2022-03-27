@@ -37,7 +37,7 @@ import org.moqui.Moqui
     ToolsRestApiTests.class,
     ToolsScreenRenderTests.class,
     EndpointTests.class,
-    DatasourceTests.class
+    JsonSupportTests.class
 ])
 @Suite
 public class MoquiSuite

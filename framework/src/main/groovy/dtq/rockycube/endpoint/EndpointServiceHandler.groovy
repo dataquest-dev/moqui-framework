@@ -18,6 +18,7 @@ import org.moqui.impl.entity.condition.FieldValueCondition
 import org.moqui.impl.entity.condition.ListCondition
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.nio.charset.StandardCharsets
 
 class EndpointServiceHandler {
     protected final static Logger logger = LoggerFactory.getLogger(EndpointServiceHandler.class);
@@ -62,7 +63,6 @@ class EndpointServiceHandler {
 
         def ds = ec.entity.getDatasourceFactory(ed.groupName)
         dsType = ds.getClass().simpleName
-        logger.info("Entity: ${dsType}")
     }
 
     private Object fillResultset(EntityValue single)
@@ -75,12 +75,15 @@ class EndpointServiceHandler {
             if (!it.key) return
             if (addField(it.key)) {
                 // special treatment for JSONB
-
-                if (it.hasProperty('fi')) {
-                    logger.info("HAS fi")
-                }
+                logger.info("column: ${it.key}, class: ${it.value.getClass().simpleName}")
 
                 recordMap.put(it.key, it.value)
+
+                if (it.value.getClass().simpleName == "byte[]")
+                {
+                    def val = new String((byte[]) it.value, StandardCharsets.UTF_8)
+                    logger.info("VALUE: ${val}")
+                }
             }
         }
 
