@@ -49,13 +49,15 @@ class JsonSupportTests extends Specification {
         // disable authz
         ec.artifactExecution.disableAuthz()
 
+        def valueTested = [
+                value: 1981,
+                theOtherList: [1, 2, 3]
+        ]
+
         // create new entity
         def newStoredJson = ec.entity.makeValue("moqui.test.TestEntity")
                 .setAll([
-                        testJsonField:[
-                                value: 1981,
-                                theOtherList: [1, 2, 3]
-                        ],
+                        testJsonField:valueTested,
                 ])
                 .setSequencedIdPrimary()
                 .create()
@@ -64,12 +66,12 @@ class JsonSupportTests extends Specification {
         assert newStoredJson
 
         // load JSON via EndpointService
-        def data = ec.service.sync().name("dtq.rockycube.EndpointServices.populate#EntityData").disableAuthz().parameters([
+        def response = ec.service.sync().name("dtq.rockycube.EndpointServices.populate#EntityData").disableAuthz().parameters([
                 entityName: "moqui.test.TestEntity",
                 term      : [[field:'testId', value:newStoredJson.testId]]
         ]).call() as HashMap
 
         then:
-        data != null
+        response['data'][0]['testJsonField'] == valueTested
     }
 }

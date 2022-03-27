@@ -1804,6 +1804,11 @@ public abstract class EntityValueBase implements EntityValue {
             Object otherVal = other.getValue();
             return thisVal == null ? otherVal == null : thisVal.equals(otherVal);
         }
+        public boolean isMapField()
+        {
+            if (Objects.equals(fi.javaType, "java.util.HashMap")) return true;
+            return false;
+        }
     }
 
     public static class DeletedEntityValue extends EntityValueBase {

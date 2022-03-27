@@ -1,5 +1,6 @@
 package dtq.rockycube.endpoint
 
+import com.google.gson.Gson
 import dtq.rockycube.entity.MasterEntityHandler
 import org.moqui.Moqui
 import org.moqui.context.ExecutionContext
@@ -67,24 +68,43 @@ class EndpointServiceHandler {
 
     private Object fillResultset(EntityValue single)
     {
+        Gson gson = new Gson()
         HashMap<String, Object> res = [:]
         HashMap<String, Object> recordMap = [:]
         // logger.info("args.allowedFields: ${args[CONST_ALLOWED_FIELDS]}")
 
-        single.entrySet().each {it->
+        single.entrySet().each { EntityValueBase.EntityFieldEntry it->
             if (!it.key) return
-            if (addField(it.key)) {
-                // special treatment for JSONB
-                logger.info("column: ${it.key}, class: ${it.value.getClass().simpleName}")
+            if (!addField(it.key)) return
 
+            // for MONGO DATABASE, make it simple, we do not want to much
+            // of EntityDefinition handling around
+            if (dsType == "MongoDatasourceFactory")
+            {
                 recordMap.put(it.key, it.value)
+                return
+            }
 
-                if (it.value.getClass().simpleName == "byte[]")
+            // value and it's class
+            def itVal = it.value
+
+            // special treatment for maps
+            // convert ti HashMap
+            if (it.isMapField())
+            {
+                def itValCls = it.value.getClass().simpleName.toLowerCase()
+                switch (itValCls)
                 {
-                    def val = new String((byte[]) it.value, StandardCharsets.UTF_8)
-                    logger.info("VALUE: ${val}")
+                    case "byte[]":
+                        def itStrVal = new String((byte[]) it.value, StandardCharsets.UTF_8)
+                        itVal = gson.fromJson(itStrVal, HashMap.class)
+                        break
+                    default:
+                        itVal = gson.fromJson(itVal.toString(), HashMap.class)
                 }
             }
+
+            recordMap.put(it.key, itVal)
         }
 
         // handle specialities
