@@ -6,13 +6,11 @@ import org.moqui.Moqui
 import org.moqui.context.ExecutionContext
 import org.moqui.entity.EntityCondition
 import org.moqui.entity.EntityException
-import org.moqui.entity.EntityFind
 import org.moqui.entity.EntityList
 import org.moqui.entity.EntityValue
 import org.moqui.impl.context.ExecutionContextFactoryImpl
 import org.moqui.impl.entity.EntityDefinition
 import org.moqui.impl.entity.EntityValueBase
-import org.moqui.impl.entity.FieldInfo
 import org.moqui.impl.entity.condition.ConditionField
 import org.moqui.impl.entity.condition.EntityConditionImplBase
 import org.moqui.impl.entity.condition.FieldValueCondition
@@ -47,6 +45,14 @@ class EndpointServiceHandler {
     private EntityConditionImplBase queryCondition
     private Integer pageIndex
     private String dsType
+
+    public static HashMap defaultErrorResponse(String message)
+    {
+        return [
+                result: false,
+                message: message
+        ]
+    }
 
     EndpointServiceHandler() {
         this.ec = Moqui.getExecutionContext()
@@ -419,7 +425,7 @@ class EndpointServiceHandler {
         if (singleEntityData.isEmpty())
         {
             // return empty map
-            return [:]
+            return defaultErrorResponse("Single entity creation failed, no data provided")
         }
 
         def created = ec.entity.makeValue(entityName)
