@@ -31,7 +31,26 @@ class EndpointTests extends Specification {
                 .call()
 
         then:
-        enums != null
-        logger.info("enums: ${enums}")
+            enums != null
+            enums.size() == 2
+
+            logger.info("enums: ${enums}")
+    }
+
+    def "test writing string into date"()
+    {
+        when:
+
+        def rawStringWrite = this.ec.service.sync()
+                .name("dtq.rockycube.EndpointServices.create#EntityData")
+                .parameters([
+                        entityName: "moqui.test.TestEntity",
+                        data: [testDate: '2022-01-12']
+                ])
+                .call()
+
+        then:
+
+        rawStringWrite.size() == 1
     }
 }
