@@ -175,7 +175,7 @@ dependencies {
     implementation module('org.subethamail:subethasmtp:3.1.7')
 
     // Snake YAML
-    implementation 'org.yaml:snakeyaml:1.27' // Apache 2.0
+    implementation 'org.yaml:snakeyaml:1.30' // Apache 2.0
 
     // Apache Jackrabbit - uncomment here or include elsewhere when Jackrabbit repository configurations are used
     // implementation 'org.apache.jackrabbit:jackrabbit-jcr-rmi:2.12.1' // Apache 2.0
