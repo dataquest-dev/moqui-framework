@@ -15,6 +15,7 @@ __*
 build
 .gradle
 .shelf
+gradle.properties
 /framework/dependencies
 
 # build generated files
