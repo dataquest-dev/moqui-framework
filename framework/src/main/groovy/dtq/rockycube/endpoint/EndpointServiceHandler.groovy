@@ -79,7 +79,7 @@ class EndpointServiceHandler {
         HashMap<String, Object> recordMap = [:]
         // logger.info("args.allowedFields: ${args[CONST_ALLOWED_FIELDS]}")
 
-        single.entrySet().each { EntityValueBase.EntityFieldEntry it->
+        single.entrySet().each { it->
             if (!it.key) return
             if (!addField(it.key)) return
 
