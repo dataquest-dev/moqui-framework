@@ -4,7 +4,7 @@ services:
     image: postgres:14.1-alpine
     container_name: dev-postgres
     volumes:
-      - /tmp/dump:/tmp/dump
+      - ./../../db:/tmp/dump
     environment:
       POSTGRES_USER: moqui
       POSTGRES_DB: moqui
