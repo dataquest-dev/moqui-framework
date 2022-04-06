@@ -3,7 +3,7 @@
 # "Creating database dump for purpose of having a clear and filled database"
 # get into the simple-build directory
 # shellcheck disable=SC2164
-pushd ..\gradle-tasks\fill-database
+pushd ../gradle-tasks/fill-database
 
 # 1. create database server (inside separate component) and fill it
 docker-compose -p pg-dump   -f create-database.yml build --no-cache
