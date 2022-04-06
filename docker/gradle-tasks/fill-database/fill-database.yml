@@ -8,8 +8,9 @@ services:
       args:
         MOQUI_CONF: conf/MoquiLoadConf.xml
         GRADLE_VERSION: 5.6.4
-        pg_load_server: dev-postgres
     container_name: moqui-load-server
+    environment:
+      pg_load_server: dev-postgres
     command: ["java", "-cp", ".", "MoquiStart", "port=8080"]
     restart: always
     networks:
