@@ -19,7 +19,7 @@ WORKDIR /opt/moqui-source
 COPY runtime runtime/.
 COPY framework framework/.
 COPY moqui-util moqui-util/.
-COPY *.* .
+COPY *.* ./
 
 RUN gradle wrapper
 RUN ./gradlew build
