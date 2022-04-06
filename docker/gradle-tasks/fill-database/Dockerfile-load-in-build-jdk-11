@@ -24,7 +24,7 @@ COPY *.* ./
 
 RUN gradle wrapper
 RUN ./gradlew build
-RUN ./gradlew load -Dmoqui.conf.dev=${MOQUI_CONF} -Dpg_load_server=${PG_LOAD_SERVER}
+RUN ./gradlew load -Dmoqui.conf.dev=${MOQUI_CONF} -Ppg_load_server=${PG_LOAD_SERVER}
 
 WORKDIR /opt/moqui
 RUN cp /opt/moqui-source/moqui-plus-runtime.war .
