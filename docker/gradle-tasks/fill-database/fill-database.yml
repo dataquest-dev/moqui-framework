@@ -1,14 +1,5 @@
 version: "3.5"
 services:
-  docker-host:
-    image: qoomon/docker-host
-    cap_add: [ 'NET_ADMIN', 'NET_RAW' ]
-    restart: on-failure
-    networks:
-      - dtq-int
-    environment:
-      - PORTS=5431
-
   moqui-load-server:
     image: moqui-load-server
     build:
@@ -21,8 +12,6 @@ services:
     container_name: moqui-load-server
     command: ["java", "-cp", ".", "MoquiStart", "port=8080"]
     restart: always
-    depends_on:
-      - docker-host
     networks:
       - dtq-int
     ports:

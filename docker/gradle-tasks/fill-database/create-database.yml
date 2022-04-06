@@ -1,5 +1,14 @@
 version: "3.5"
 services:
+  docker-host:
+    image: qoomon/docker-host
+    cap_add: [ 'NET_ADMIN', 'NET_RAW' ]
+    restart: on-failure
+    networks:
+      - dtq-int
+    environment:
+      - PORTS=5431
+
   pg-dump-database:
     image: postgres:14.1-alpine
     container_name: dev-postgres
@@ -17,6 +26,8 @@ services:
       timeout: 10s
       retries: 5
     restart: always
+    depends_on:
+      - docker-host
     networks:
       - dtq-int
     ports:
