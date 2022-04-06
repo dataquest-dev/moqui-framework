@@ -1,4 +1,4 @@
-version: "3"
+version: "3.5"
 services:
   pg-dump-database:
     image: postgres:14.1-alpine
