@@ -11,7 +11,8 @@ ENV PG_LOAD_SERVER=${PG_LOAD_SERVER}
 
 # 2. build application, load data into database
 RUN mkdir /opt/gradle
-RUN unzip -d /opt/gradle /tmp/files/gradle-${GRADLE_VERSION}-bin.zip
+COPY ./../../files/gradle-${GRADLE_VERSION}-bin.zip /tmp/.
+RUN unzip -d /opt/gradle /tmp/gradle-${GRADLE_VERSION}-bin.zip
 RUN ls -l /opt/gradle
 
 WORKDIR /opt/moqui-source

@@ -11,8 +11,6 @@ services:
     container_name: moqui-load-server
     command: ["java", "-cp", ".", "MoquiStart", "port=8080"]
     restart: always
-    volumes:
-      - ./../../../../../files:/tmp/files:ro
     networks:
       - dtq-int
     ports:
