@@ -23,6 +23,5 @@ services:
      - "5431:5431"
 
 networks:
-  default:
-    external:
-      name: dtq-int
+  dtq-int:
+    external: true
