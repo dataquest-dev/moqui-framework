@@ -22,6 +22,7 @@ COPY runtime runtime/.
 COPY framework framework/.
 COPY moqui-util moqui-util/.
 COPY *.* ./
+COPY docker/gradle-tasks/fill-database/DumpDatabase.sql /opt/.
 
 RUN gradle wrapper
 RUN ./gradlew build
@@ -31,10 +32,9 @@ WORKDIR /opt/moqui
 RUN cp /opt/moqui-source/moqui-plus-runtime.war .
 RUN unzip moqui-plus-runtime.war
 
-# exposed as volumes for configuration purposes
-VOLUME ["/opt/moqui/runtime/conf", "/opt/moqui/runtime/lib", "/opt/moqui/runtime/classes"]
-# exposed as volumes to persist data outside the container, recommended
-VOLUME ["/opt/moqui/runtime/log", "/opt/moqui/runtime/txlog"]
+# run DB dump
+RUN cat /opt/DumpDatabase.sql | docker exec -i dev-postgres su postgres
+RUN cat /tmp/moqui-dump.sql
 
 # Main Servlet Container Port
 EXPOSE 80

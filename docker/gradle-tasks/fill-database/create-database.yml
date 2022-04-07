@@ -3,8 +3,8 @@ services:
   pg-dump-database:
     image: postgres:14.1-alpine
     container_name: dev-postgres
-    volumes:
-      - ./../../db:/tmp/dump
+#    volumes:
+#      - ./../../db/dump:/tmp
     environment:
       POSTGRES_USER: moqui
       POSTGRES_DB: moqui
@@ -23,5 +23,6 @@ services:
      - "5431:5431"
 
 networks:
-  dtq-int:
-    name: dtq-int
+  default:
+    external:
+      name: dtq-int

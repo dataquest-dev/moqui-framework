@@ -16,9 +16,6 @@ ip4=$(/sbin/ip -o -4 addr list eth0 | awk '{print $4}' | cut -d/ -f1)
 # this will actually initialize the database, without running the component
 docker-compose -p moqui-fill -f fill-database.yml build --no-cache --build-arg PG_LOAD_SERVER="$ip4"
 
-# run DUMP script
-type DumpDatabase.sql | docker exec -i dev-postgres su postgres
-
 # kill containers
 docker-compose -p moqui-fill -f fill-database.yml down --rmi local -v
 docker-compose -p pg-dump -f create-database.yml down --rmi local -v
