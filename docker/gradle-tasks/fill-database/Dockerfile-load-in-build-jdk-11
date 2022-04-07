@@ -5,18 +5,13 @@ FROM openjdk:11-jdk
 ARG GRADLE_VERSION
 ARG MOQUI_CONF
 ARG PG_LOAD_SERVER
-ARG HTTP_PROXY
-ARG HTTPS_PROXY
-ENV HTTP_PROXY=${HTTP_PROXY}
-ENV HTTPS_PROXY=${HTTPS_PROXY}
 ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
 ENV PATH="/opt/gradle/gradle-${GRADLE_VERSION}/bin:${PATH}"
 ENV PG_LOAD_SERVER=${PG_LOAD_SERVER}
 
 # 2. build application, load data into database
-RUN wget https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -P /tmp
 RUN mkdir /opt/gradle
-RUN unzip -d /opt/gradle /tmp/gradle-${GRADLE_VERSION}-bin.zip
+RUN unzip -d /opt/gradle /tmp/files/gradle-${GRADLE_VERSION}-bin.zip
 RUN ls -l /opt/gradle
 
 WORKDIR /opt/moqui-source
