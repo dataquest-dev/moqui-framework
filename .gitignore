@@ -4,6 +4,9 @@
 # local files
 __*
 
+# files directory
+/files
+
 # db dumps
 *.sql
 *.zip
