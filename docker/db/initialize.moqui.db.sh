@@ -21,7 +21,7 @@ EOSQL
 
 function restore_data() {
     local database=$1
-    echo "  Restoring from backup '$database'"
+    echo "  Restoring '$database' from fixed backup '/dumps/moqui-dump.sql'"
     psql $database < /dumps/moqui-dump.sql
 }
 
