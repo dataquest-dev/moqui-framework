@@ -10,8 +10,8 @@ ENV PATH="/opt/gradle/gradle-${GRADLE_VERSION}/bin:${PATH}"
 ENV PG_LOAD_SERVER=${PG_LOAD_SERVER}
 
 # 2. build application, load data into database
+RUN wget https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -P /tmp
 RUN mkdir /opt/gradle
-COPY files/gradle-${GRADLE_VERSION}-bin.zip /tmp/.
 RUN unzip -d /opt/gradle /tmp/gradle-${GRADLE_VERSION}-bin.zip
 RUN ls -l /opt/gradle
 
