@@ -208,7 +208,7 @@ class EndpointServiceHandler {
         logger.info("entityName/term/index/size: ${entityName}/${queryCondition}/${pageIndex}/${pageSize}")
 
         // entity definition is a must
-        this.ed = this.meh.getDefinition(entityName, false)
+        this.ed = this.meh.getDefinition(entityName)
         if (!this.ed) throw new EntityException("Entity definition not found [${entityName?:'NOT SET'}], cannot continue with populating service output")
     }
 
