@@ -1539,4 +1539,10 @@ abstract class EntityFindBase implements EntityFind {
 
     @Override
     ArrayList<String> getQueryTextList() { return queryTextList }
+
+    @Override
+    public InputStream getAttachment()
+    {
+        throw new EntityException("Method must be supported on connectorFactory level");
+    }
 }

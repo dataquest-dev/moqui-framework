@@ -1,7 +1,7 @@
 package dtq.rockycube.endpoint
 
 import com.google.gson.Gson
-import dtq.rockycube.entity.MasterEntityHandler
+import dtq.rockycube.entity.EntityHelper
 import org.moqui.Moqui
 import org.moqui.context.ExecutionContext
 import org.moqui.entity.EntityCondition
@@ -10,7 +10,6 @@ import org.moqui.entity.EntityList
 import org.moqui.entity.EntityValue
 import org.moqui.impl.context.ExecutionContextFactoryImpl
 import org.moqui.impl.entity.EntityDefinition
-import org.moqui.impl.entity.EntityValueBase
 import org.moqui.impl.entity.condition.ConditionField
 import org.moqui.impl.entity.condition.EntityConditionImplBase
 import org.moqui.impl.entity.condition.FieldValueCondition
@@ -23,7 +22,7 @@ class EndpointServiceHandler {
     protected final static Logger logger = LoggerFactory.getLogger(EndpointServiceHandler.class);
     private ExecutionContext ec
     private ExecutionContextFactoryImpl ecfi
-    private MasterEntityHandler meh
+    private EntityHelper meh
 
     private static String CONST_ALLOWED_FIELDS = 'allowedFields'
     private static String CONST_CONVERT_OUTPUT_TO_LIST = 'convertToList'
@@ -57,7 +56,7 @@ class EndpointServiceHandler {
     EndpointServiceHandler() {
         this.ec = Moqui.getExecutionContext()
         this.ecfi = (ExecutionContextFactoryImpl) Moqui.getExecutionContextFactory()
-        this.meh = new MasterEntityHandler(this.ec)
+        this.meh = new EntityHelper(this.ec)
 
         // initial fill
         this.fillRequestVariables()

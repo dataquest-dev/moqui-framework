@@ -1371,9 +1371,9 @@ class EntityFacadeImpl implements EntityFacade {
             if (edf instanceof EntityDatasourceFactoryImpl) {
                 EntityDatasourceFactoryImpl edfi = (EntityDatasourceFactoryImpl) edf
                 DatasourceInfo dsi = edfi.dsi
-                dsiList.add([group:groupName, uniqueName:dsi.uniqueName, database:dsi.database.attribute('name'), detail:dsi.dsDetails] as Map<String, Object>)
+                dsiList.add([group:groupName, uniqueName:dsi.uniqueName, database:dsi.database.attribute('name'), detail:dsi.dsDetails, dsFactory: edf.getClass().simpleName] as Map<String, Object>)
             } else {
-                dsiList.add([group:groupName] as Map<String, Object>)
+                dsiList.add([group:groupName, dsFactory: edf.getClass().simpleName] as Map<String, Object>)
             }
         }
         return dsiList

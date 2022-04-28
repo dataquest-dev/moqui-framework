@@ -2,7 +2,7 @@ import org.moqui.Moqui
 import org.moqui.context.ExecutionContext
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import dtq.rockycube.entity.MasterEntityHandler
+import dtq.rockycube.entity.EntityHelper
 
 import spock.lang.Shared
 import spock.lang.Specification
@@ -14,7 +14,7 @@ class JsonSupportTests extends Specification {
     ExecutionContext ec
 
     @Shared
-    MasterEntityHandler meh
+    EntityHelper meh
 
     def setupSpec() {
         // init the framework, get the ec
@@ -22,7 +22,7 @@ class JsonSupportTests extends Specification {
         ec.user.loginUser('john.doe', 'moqui')
 
         // init entity handler
-        this.meh = new MasterEntityHandler(ec)
+        this.meh = new EntityHelper(ec)
     }
 
     def cleanupSpec() {
@@ -34,7 +34,7 @@ class JsonSupportTests extends Specification {
     {
         when:
 
-        def ed = this.meh.getDefinition("moqui.test.TestEntity", false, "transactional")
+        def ed = this.meh.getDefinition("moqui.test.TestEntity", "transactional")
 
         then:
             ed != null
