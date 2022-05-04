@@ -6,6 +6,7 @@ import org.moqui.Moqui
 import org.moqui.context.ExecutionContext
 import org.moqui.entity.EntityCondition
 import org.moqui.entity.EntityException
+import org.moqui.entity.EntityFind
 import org.moqui.entity.EntityList
 import org.moqui.entity.EntityValue
 import org.moqui.impl.context.ExecutionContextFactoryImpl
@@ -23,7 +24,7 @@ class EndpointServiceHandler {
     private ExecutionContext ec
     private ExecutionContextFactoryImpl ecfi
     private EntityHelper meh
-
+    private static String CONST_UPDATE_IF_EXISTS = 'updateIfExists'
     private static String CONST_ALLOWED_FIELDS = 'allowedFields'
     private static String CONST_CONVERT_OUTPUT_TO_LIST = 'convertToList'
     private static String CONST_ALLOW_TIMESTAMPS = 'allowTimestamps'
@@ -327,6 +328,9 @@ class EndpointServiceHandler {
     private void checkArgsSetup()
     {
         // by default
+        //      do not overwrite
+        if (!args.containsKey(CONST_UPDATE_IF_EXISTS)) args.put(CONST_UPDATE_IF_EXISTS, false)
+
         //      all fields are allowed
         if (!args.containsKey(CONST_ALLOWED_FIELDS)) args.put(CONST_ALLOWED_FIELDS, '*')
 
@@ -427,6 +431,20 @@ class EndpointServiceHandler {
             return defaultErrorResponse("Single entity creation failed, no data provided")
         }
 
+        // update if necessary
+        // otherwise perform clean write
+        if (args.get(CONST_UPDATE_IF_EXISTS) && queryCondition)
+        {
+            def allreadyExists = ec.entity.find(entityName).condition(queryCondition)
+            if (allreadyExists.count() == 1)
+            {
+                return this.updateSingleEntity(allreadyExists, singleEntityData)
+            } else if (allreadyExists.count() > 1)
+            {
+                throw new EntityException("Unable to perform create/update, multiple entries exist")
+            }
+        }
+
         def created = ec.entity.makeValue(entityName)
                 .setAll(singleEntityData)
 
@@ -439,6 +457,7 @@ class EndpointServiceHandler {
         // let it create
         created.create()
 
+        // get result back to the caller
         return fillResultset(created)
     }
 
@@ -512,6 +531,11 @@ class EndpointServiceHandler {
                 .forUpdate(true)
         logger.debug("UPDATE: entityName/term: ${entityName}/${queryCondition}")
 
+        // update record
+        return this.updateSingleEntity(toUpdate, updateData)
+    }
+
+    private HashMap updateSingleEntity(EntityFind toUpdate, HashMap<String, Object> updateData){
         // if no records deleted, quit, with false flag
         if (toUpdate.count() == 0)
         {
