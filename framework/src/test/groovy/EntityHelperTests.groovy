@@ -1,13 +1,16 @@
 import dtq.rockycube.entity.EntityHelper
+import java.time.LocalDate
 import junit.framework.Test
 import org.moqui.Moqui
 import org.moqui.context.ExecutionContext
+import org.moqui.impl.ViUtilities
 import org.moqui.impl.entity.EntityDefinition
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import spock.lang.Shared
 import spock.lang.Specification
 
+import java.time.LocalDate
 import java.util.regex.Pattern
 
 class EntityHelperTests extends Specification {
@@ -69,12 +72,22 @@ class EntityHelperTests extends Specification {
     def test_connection_search()
     {
         when:
-        assert EntityHelper.findDatasource(ec, {HashMap dsDetails ->
+        assert EntityHelper.findDatasource(ec, { HashMap dsDetails ->
             return dsDetails['datasourceFactory'] == 'MongoDatasourceFactory'
         }) == null
         assert EntityHelper.findDatasource(ec, { HashMap dsDetails ->
             return dsDetails['databaseName'] == 'h2'
         }) == 'transactional'
+
+        then:
+        1 == 1
+    }
+
+    // ViUtilities tests
+    def test_to_LocalDate_conversion() {
+        when:
+
+        assert ViUtilities.stringToDate("2022-04-01") == LocalDate.of(2022, 4, 1)
 
         then:
         1 == 1

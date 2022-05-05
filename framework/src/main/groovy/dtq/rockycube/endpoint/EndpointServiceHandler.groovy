@@ -59,11 +59,21 @@ class EndpointServiceHandler {
         this.ecfi = (ExecutionContextFactoryImpl) Moqui.getExecutionContextFactory()
         this.meh = new EntityHelper(this.ec)
 
+        // do we have an entity?
+        // try extracting from table name
+        if (!ec.context.entityName) {
+            String tableName = ec.context.tableName ?: null
+            if (!tableName) throw new EntityException("Missing both entity and table name")
+
+            this.ed = meh.getDefinition(tableName)
+            if (!ed) throw new EntityException("Unable to find EntityDefinition for '${tableName}'")
+            this.entityName = ed.fullEntityName
+        } else {
+            this.entityName = (String) ec.context.entityName
+        }
+
         // initial fill
         this.fillRequestVariables()
-
-        // do we have an entity?
-        if (!entityName) throw new EntityException("Missing entity name")
 
         // subsequent calculations
         this.calculateDependencies()
@@ -209,13 +219,12 @@ class EndpointServiceHandler {
         logger.info("entityName/term/index/size: ${entityName}/${queryCondition}/${pageIndex}/${pageSize}")
 
         // entity definition is a must
-        this.ed = this.meh.getDefinition(entityName)
+        if (!this.ed) this.ed = this.meh.getDefinition(entityName)
         if (!this.ed) throw new EntityException("Entity definition not found [${entityName?:'NOT SET'}], cannot continue with populating service output")
     }
 
     private void fillRequestVariables()
     {
-        this.entityName = (String) ec.context.entityName
         this.term = (ArrayList) ec.context.term?:[]
         this.inputIndex = (Integer) ec.context.index?:1
         this.pageSize = (Integer) ec.context.size?:20
