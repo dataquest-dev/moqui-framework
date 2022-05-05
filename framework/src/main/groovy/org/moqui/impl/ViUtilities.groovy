@@ -22,6 +22,8 @@ import java.sql.Connection
 import org.slf4j.Logger
 
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.regex.Pattern
 
 /** These are utilities that should exist elsewhere, but I can't find a good simple library for them, and they are
@@ -32,13 +34,24 @@ class ViUtilities {
         return inputValue.replaceAll("[^\\d]", "")
     }
 
+    static LocalDate stringToDate(Object input) {
+        if (!input) return null
+
+        switch (input.getClass().simpleName) {
+            case "String":
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                return LocalDate.parse(input.toString(), formatter)
+            default:
+                throw new Exception("Unsupported date conversion from type ${input.getClass().simpleName}")
+        }
+    }
+
     static Long stringToUnix(String input) {
         if (input.isNumber()) return Long.parseLong(input)
 
         // is it date format?
         def date_1_rec = Pattern.compile("\\d{4}-\\d{2}-\\d{2}:\\d{2}:\\d{2}:\\d{2}")
-        if (input==~date_1_rec)
-        {
+        if (input ==~ date_1_rec) {
             def date_1 = new SimpleDateFormat("yyyy-MM-dd:HH:mm:ss").parse(input)
             return date_1.getTime() / 1000
         }

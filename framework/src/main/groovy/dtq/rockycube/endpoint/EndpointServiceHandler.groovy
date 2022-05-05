@@ -400,33 +400,32 @@ class EndpointServiceHandler {
         // ArrayList supported, this way we can run multiple create procedures in single moment
         // if (data.getClass().simpleName.startsWith('ArrayList')) throw new EntityException("Creating multiple entities not supported")
 
-        def itemsCreated = []
+        def itemsCreated = 0
+        HashMap<String, Object> lastItemResult = [:]
 
         // different for array and hashmap
-        if (data instanceof HashMap || data instanceof LinkedHashMap)
-        {
-            itemsCreated.push(this.createSingleEntity(data as HashMap))
+        if (data instanceof HashMap || data instanceof LinkedHashMap) {
+            lastItemResult = this.createSingleEntity(data as HashMap)
+            return lastItemResult
 
         } else {
-            data.each {HashMap it->
-                itemsCreated.add(this.createSingleEntity(it))
+            data.each { HashMap it ->
+                lastItemResult = this.createSingleEntity(it)
+                if (lastItemResult['result']) itemsCreated += 1
             }
         }
 
-        def res = [
-                result: true,
-                message: "Records created (${itemsCreated.size()})"
-        ]
+        // if only one, return last item's result
+        if (itemsCreated == 1) return lastItemResult
 
-        // do not add data if more than one record created
-        if (itemsCreated.size() == 1) res.put("data", itemsCreated)
-        return res
+        return [
+                result : true,
+                message: "Records created/updated (${itemsCreated})"
+        ]
     }
 
-    private createSingleEntity(HashMap singleEntityData)
-    {
-        if (singleEntityData.isEmpty())
-        {
+    private HashMap createSingleEntity(HashMap singleEntityData) {
+        if (singleEntityData.isEmpty()) {
             // return empty map
             return defaultErrorResponse("Single entity creation failed, no data provided")
         }
@@ -441,7 +440,7 @@ class EndpointServiceHandler {
                 return this.updateSingleEntity(allreadyExists, singleEntityData)
             } else if (allreadyExists.count() > 1)
             {
-                throw new EntityException("Unable to perform create/update, multiple entries exist")
+                return defaultErrorResponse("Unable to perform create/update, multiple entries exist")
             }
         }
 
@@ -449,8 +448,7 @@ class EndpointServiceHandler {
                 .setAll(singleEntityData)
 
         // create primary key
-        if (args[CONST_AUTO_CREATE_PKEY] == true)
-        {
+        if (args[CONST_AUTO_CREATE_PKEY] == true) {
             created.setSequencedIdPrimary()
         }
 
@@ -458,7 +456,11 @@ class EndpointServiceHandler {
         created.create()
 
         // get result back to the caller
-        return fillResultset(created)
+        def res = [
+                result : true,
+                message: "Records created (1)",
+                data   : [fillResultset(created)]
+        ]
     }
 
     public HashMap deleteEntityData()
@@ -567,7 +569,7 @@ class EndpointServiceHandler {
         return [
                 result: true,
                 message: "Records updated (1)",
-                data: fillResultset(toUpdate.list())
+                data: [fillResultset(mod)]
         ]
     }
 }
