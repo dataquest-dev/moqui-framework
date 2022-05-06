@@ -150,11 +150,10 @@ class EndpointServiceHandler {
         }
     }
 
-    private ArrayList fillResultset(EntityList entities)
-    {
+    private Object fillResultset(EntityList entities) {
+        // return as array if there are more entities included
         def res = []
-        for (EntityValue ev in entities)
-        {
+        for (EntityValue ev in entities) {
             res.add(fillResultset(ev))
         }
         return res
