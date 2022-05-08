@@ -15,8 +15,12 @@ import org.moqui.impl.entity.condition.ConditionField
 import org.moqui.impl.entity.condition.EntityConditionImplBase
 import org.moqui.impl.entity.condition.FieldValueCondition
 import org.moqui.impl.entity.condition.ListCondition
+import org.moqui.util.ObjectUtilities
+import org.moqui.util.RestClient
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import javax.servlet.http.HttpServletResponse
 import java.nio.charset.StandardCharsets
 
 class EndpointServiceHandler {
@@ -29,6 +33,8 @@ class EndpointServiceHandler {
     private static String CONST_CONVERT_OUTPUT_TO_LIST = 'convertToList'
     private static String CONST_ALLOW_TIMESTAMPS = 'allowTimestamps'
     private static String CONST_AUTO_CREATE_PKEY = 'autoCreatePrimaryKey'
+    private static String CONST_PREFER_OBJECT_IN_RETURN = 'preferObjectInReturn'
+    private static String CONST_RENAME_MAP = 'renameMap'
 
     /*
     REQUEST ATTRIBUTES
@@ -82,6 +88,47 @@ class EndpointServiceHandler {
         dsType = ds.getClass().simpleName
     }
 
+    private static Object cleanMongoObjects(Object incoming)
+    {
+        if (incoming.getClass().simpleName == "LinkedHashMap")
+        {
+            def newMap = [:]
+            for (def itemKey in incoming.keySet())
+            {
+                newMap.put(itemKey, cleanMongoObjects(incoming[itemKey]))
+            }
+            return newMap
+        } else if (incoming.getClass().simpleName == "ArrayList")
+        {
+            def newList = []
+            for (def item in incoming)
+            {
+                newList.add( cleanMongoObjects(item))
+            }
+            return newList
+        } else if (incoming.getClass().simpleName == "Document"){
+            return (LinkedHashMap) incoming
+        } else {
+            return incoming
+        }
+    }
+
+    // rename field if necessary
+    private String fieldName(String name)
+    {
+        // do we have a setup object?
+        if (!args.containsKey(CONST_RENAME_MAP)) return name
+
+        // find in map
+        try {
+            HashMap renameMap = args[CONST_RENAME_MAP] as HashMap
+            return renameMap.get(name, name)
+        } catch (Exception exc){
+            logger.error("Invalid RENAME_MAP provided: ${exc.message}")
+            return name
+        }
+    }
+
     private Object fillResultset(EntityValue single)
     {
         Gson gson = new Gson()
@@ -92,12 +139,13 @@ class EndpointServiceHandler {
         single.entrySet().each { it->
             if (!it.key) return
             if (!addField(it.key)) return
+            def fieldName = fieldName(it.key)
 
             // for MONGO DATABASE, make it simple, we do not want to much
             // of EntityDefinition handling around
             if (dsType == "MongoDatasourceFactory")
             {
-                recordMap.put(it.key, it.value)
+                recordMap.put(fieldName, cleanMongoObjects(it.value))
                 return
             }
 
@@ -105,7 +153,7 @@ class EndpointServiceHandler {
             def itVal = it.value
 
             // special treatment for maps
-            // convert ti HashMap
+            // convert HashMap
             if (it.isMapField())
             {
                 def itValCls = it.value.getClass().simpleName.toLowerCase()
@@ -120,7 +168,7 @@ class EndpointServiceHandler {
                 }
             }
 
-            recordMap.put(it.key, itVal)
+            recordMap.put(fieldName, itVal)
         }
 
         // handle specialities
@@ -151,7 +199,13 @@ class EndpointServiceHandler {
     }
 
     private Object fillResultset(EntityList entities) {
-        // return as array if there are more entities included
+        // return as array by default, only when set otherwise
+        if (entities.size() == 1 && args[CONST_PREFER_OBJECT_IN_RETURN])
+        {
+            return fillResultset(entities[0])
+        }
+
+        // otherwise return as an array
         def res = []
         for (EntityValue ev in entities) {
             res.add(fillResultset(ev))
@@ -350,6 +404,9 @@ class EndpointServiceHandler {
 
         //      by default, let the entity manager create primary key
         if (!args.containsKey(CONST_AUTO_CREATE_PKEY)) args.put(CONST_AUTO_CREATE_PKEY, true)
+
+        //      by default, do not attempt to force-return an object
+        if (!args.containsKey(CONST_PREFER_OBJECT_IN_RETURN)) args.put(CONST_PREFER_OBJECT_IN_RETURN, false)
     }
 
     private void manipulateRecordId(HashMap<String, Object> record)
@@ -578,6 +635,57 @@ class EndpointServiceHandler {
                 result: true,
                 message: "Records updated (1)",
                 data: [fillResultset(mod)]
+        ]
+    }
+
+    // render data in PY-CALC using template
+    public static String renderTemplate(HttpServletResponse response, String template, Object data)
+    {
+        ExecutionContext ec = Moqui.getExecutionContext()
+
+        // expect config in system variables
+        def pycalcHost = System.properties.get("py.server.host")
+        def renderTemplateEndpoint = System.properties.get("py.endpoint.render")
+
+        // basic checks
+        if (!pycalcHost) throw new EndpointException("PY-CALC server host not defined")
+        if (!renderTemplateEndpoint) throw new EndpointException("PY-CALC server's render template endpoint not set")
+
+        RestClient restClient = ec.service.rest().method(RestClient.POST)
+                .uri("${pycalcHost}/${renderTemplateEndpoint}")
+                .addHeader("Content-Type", "applications/json")
+                .addBodyParameter("template", template)
+                .jsonObject(data)
+        RestClient.RestResponse restResponse = restClient.call()
+
+        // chech status code
+        if (restResponse.statusCode != 200) {
+            throw new EndpointException("Response with status ${restResponse.statusCode} returned: ${restResponse.reasonPhrase}")
+        }
+
+        // set content type
+        response.setContentType("text/html")
+        response.setCharacterEncoding("UTF-8")
+
+        // render into output stream of the response
+        InputStream is = new ByteArrayInputStream(restResponse.bytes());
+        try {
+            OutputStream os = response.outputStream
+            try {
+                int totalLen = ObjectUtilities.copyStream(is, os)
+                logger.info("Streamed ${totalLen} bytes from response")
+            } finally {
+                os.close()
+            }
+        } finally {
+            // close stream
+            is.close()
+        }
+        response.writer.flush()
+
+        return [
+                result: true,
+                message: 'Template rendered successfully'
         ]
     }
 }
