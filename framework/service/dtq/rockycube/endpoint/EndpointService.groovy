@@ -25,9 +25,3 @@ def createEntity()
     EndpointServiceHandler ech = new EndpointServiceHandler()
     return ech.createEntityData()
 }
-
-def renderViaTemplate()
-{
-    return EndpointServiceHandler.renderTemplate(response, template, data)
-
-}

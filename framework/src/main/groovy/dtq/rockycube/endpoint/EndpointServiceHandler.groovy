@@ -639,8 +639,7 @@ class EndpointServiceHandler {
     }
 
     // render data in PY-CALC using template
-    public static String renderTemplate(HttpServletResponse response, String template, Object data)
-    {
+    public static InputStream renderTemplate(String template, Object data) {
         ExecutionContext ec = Moqui.getExecutionContext()
 
         // expect config in system variables
@@ -653,7 +652,7 @@ class EndpointServiceHandler {
 
         RestClient restClient = ec.service.rest().method(RestClient.POST)
                 .uri("${pycalcHost}/${renderTemplateEndpoint}")
-                .addHeader("Content-Type", "applications/json")
+                .addHeader("Content-Type", "application/json")
                 .addBodyParameter("template", template)
                 .jsonObject(data)
         RestClient.RestResponse restResponse = restClient.call()
@@ -663,29 +662,6 @@ class EndpointServiceHandler {
             throw new EndpointException("Response with status ${restResponse.statusCode} returned: ${restResponse.reasonPhrase}")
         }
 
-        // set content type
-        response.setContentType("text/html")
-        response.setCharacterEncoding("UTF-8")
-
-        // render into output stream of the response
-        InputStream is = new ByteArrayInputStream(restResponse.bytes());
-        try {
-            OutputStream os = response.outputStream
-            try {
-                int totalLen = ObjectUtilities.copyStream(is, os)
-                logger.info("Streamed ${totalLen} bytes from response")
-            } finally {
-                os.close()
-            }
-        } finally {
-            // close stream
-            is.close()
-        }
-        response.writer.flush()
-
-        return [
-                result: true,
-                message: 'Template rendered successfully'
-        ]
+        return new ByteArrayInputStream(restResponse.bytes());
     }
 }
