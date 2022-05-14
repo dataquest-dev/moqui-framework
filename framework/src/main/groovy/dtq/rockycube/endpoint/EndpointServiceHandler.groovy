@@ -632,10 +632,62 @@ class EndpointServiceHandler {
         mod.update()
 
         return [
-                result: true,
+                result : true,
                 message: "Records updated (1)",
-                data: [fillResultset(mod)]
+                data   : [fillResultset(mod)]
         ]
+    }
+
+    public static void sendRenderedResponse(String entityName, ArrayList term, LinkedHashMap args, String templateName, boolean inline) {
+        // add args
+        if (!args.containsKey('preferObjectInReturn')) args['preferObjectInReturn'] = true
+
+        // initialize EC
+        def ec = Moqui.getExecutionContext()
+
+        try {
+            // 1. load data, use endpoint handler (and terms) to locate data
+            def reportData = ec.service.sync().name("dtq.rockycube.EndpointServices.populate#EntityData").parameters([
+                    entityName: entityName,
+                    term      : term,
+                    args      : args
+            ]).call() as HashMap
+
+            // check result
+            if (!reportData) throw new EntityException("Unable to retrieve data for rendering response")
+            if (!reportData.containsKey('data')) throw new EntityException("No data in response, cannot proceed with template rendering")
+
+            def dataToProcess = reportData['data']
+
+            // 2. transfer data to PY-CALC to get it rendered
+            // by writing into response's output stream
+            InputStream renderedTemplate = renderTemplate(templateName, dataToProcess)
+            def response = ec.web.response
+
+            try {
+                OutputStream os = response.outputStream
+                try {
+                    int totalLen = ObjectUtilities.copyStream(renderedTemplate, os)
+                    logger.info("Streamed ${totalLen} bytes from response")
+                } finally {
+                    os.close()
+                }
+            } finally {
+                // close stream
+                renderedTemplate.close()
+            }
+
+            // 3. return response back to frontend as inline content
+            if (inline) response.addHeader("Content-Disposition", "inline")
+
+            // set content type
+            response.setContentType("text/html")
+            response.setCharacterEncoding("UTF-8")
+
+        } catch (Exception exc) {
+            ec.logger.error(exc.message)
+            ec.web.response.sendError(400, "Unable to generate template")
+        }
     }
 
     // render data in PY-CALC using template
