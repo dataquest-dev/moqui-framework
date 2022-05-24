@@ -4,7 +4,13 @@
 FROM openjdk:12-jdk-alpine
 MAINTAINER dataquest <info@dataquest.sk>
 
+ARG DOCKER_COMPOSE_WAIT_VERSION
+
 RUN apk update && apk add netcat-openbsd curl
+
+# wait installation script
+ADD https://github.com/ufoscout/docker-compose-wait/releases/download/${DOCKER_COMPOSE_WAIT_VERSION}/wait /wait
+RUN chmod +x /wait
 
 WORKDIR /opt/moqui
 # for running from the war directly, preferred approach unzips war in advance (see docker-build.sh that does this)
