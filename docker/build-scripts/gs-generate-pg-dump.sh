@@ -20,7 +20,6 @@ docker-compose -p moqui-fill -f fill-database.yml build --no-cache --build-arg P
 cat ./DumpDatabase.sql | docker exec -i dev-postgres su root
 
 # kill containers
-docker-compose -p moqui-fill -f fill-database.yml down --rmi local -v
 docker-compose -p pg-dump -f create-database.yml down --rmi local -v
 
 # return back to original dir
