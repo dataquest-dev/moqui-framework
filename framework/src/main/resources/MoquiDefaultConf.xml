@@ -51,6 +51,9 @@
     <default-property name="py.server.host" value="http://localhost:8000"/>
     <default-property name="py.endpoint.render" value="api/v1/calculator/render"/>
 
+    <!-- JMS Messaging connection info -->
+    <default-property name="jms.server.host" value=""/>
+
     <!-- Properties for a database clone; note that without overriding the transactional#clone1 datasource the default works only
         with MySQL and Postgres because of different properties on XADataSource classes of other JDBC drivers -->
     <default-property name="entity_ds_c1_disabled" value="true"/>

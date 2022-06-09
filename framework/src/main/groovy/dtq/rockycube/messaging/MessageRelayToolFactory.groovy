@@ -1,5 +1,6 @@
 package dtq.rockycube.messaging
 
+import dtq.rockycube.stomp.HttpHeaders
 import org.moqui.context.ExecutionContextFactory
 import org.moqui.context.ToolFactory
 import org.slf4j.Logger
@@ -36,10 +37,11 @@ class MessageRelayToolFactory implements ToolFactory<MessageRelayTool> {
         logger.info("Starting MessageRelayTool on '${uri}'")
 
         /*initializing client*/
-        Map<String, String> httpHeaders = new HashMap<String, String>()
+        HttpHeaders httpHeaders = new HttpHeaders()
+        httpHeaders.addHeader("login", "operator")
+        httpHeaders.addHeader("passcode", "operator")
 
         messaging = new MessageRelayTool(ecf.executionContext, uri, httpHeaders)
-        messaging.connectBlocking()
 
     }
 
