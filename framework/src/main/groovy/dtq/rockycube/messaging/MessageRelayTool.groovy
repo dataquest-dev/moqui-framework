@@ -36,4 +36,8 @@ class MessageRelayTool {
         this.ec = ec
         this.gson = new Gson()
     }
+
+    StompClient getStompClient() {
+        return stompClient
+    }
 }

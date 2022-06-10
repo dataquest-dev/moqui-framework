@@ -147,7 +147,7 @@ public class StompClient {
 		
 		if (!(heartbeat.getOutgoing() == 0 || serverIncoming == 0)) {
 			int ttl = Math.max(heartbeat.getOutgoing(), serverIncoming);
-			logger.warn("send PING every {}ms", ttl);
+			logger.info("send PING every {}ms", ttl);
 			
 			
 			//pinger
