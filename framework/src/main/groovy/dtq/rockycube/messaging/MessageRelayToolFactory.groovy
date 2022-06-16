@@ -26,10 +26,11 @@ class MessageRelayToolFactory implements ToolFactory<MessageRelayTool> {
 
         // load parameters from setup
         String uri = System.properties.get("jms.server.host")
+        String login = System.properties.get("jms.server.operator")
+        String pwd = System.properties.get("jms.server.operator.password")
 
         // do not allow Tool to be started, should there be no connection info
-        if (!uri)
-        {
+        if (!uri) {
             logger.warn("Cannot initialize MessageRelayTool, no URI set")
             return
         }
@@ -38,8 +39,8 @@ class MessageRelayToolFactory implements ToolFactory<MessageRelayTool> {
 
         /*initializing client*/
         HttpHeaders httpHeaders = new HttpHeaders()
-        httpHeaders.addHeader("login", "operator")
-        httpHeaders.addHeader("passcode", "operator")
+        httpHeaders.addHeader("login", login)
+        httpHeaders.addHeader("passcode", pwd)
 
         messaging = new MessageRelayTool(ecf.executionContext, uri, httpHeaders)
 
