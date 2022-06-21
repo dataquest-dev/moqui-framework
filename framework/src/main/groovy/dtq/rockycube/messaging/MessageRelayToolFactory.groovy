@@ -1,6 +1,7 @@
 package dtq.rockycube.messaging
 
 import dtq.rockycube.stomp.HttpHeaders
+import dtq.rockycube.stomp.listener.DisconnectListener
 import org.moqui.context.ExecutionContextFactory
 import org.moqui.context.ToolFactory
 import org.slf4j.Logger
@@ -58,7 +59,12 @@ class MessageRelayToolFactory implements ToolFactory<MessageRelayTool> {
     @Override
     void destroy() {
         if (messaging != null) try {
-            messaging.closeConnection(0, 'Closing connection on tool destruction')
+            messaging.stompClient.disconnect(new DisconnectListener() {
+                @Override
+                void onDisconnect() {
+                    logger.info('Disconnecting MessageRelayTool')
+                }
+            })
 
             logger.info("MessageRelayTool closed")
         } catch (Throwable t) { logger.error("Error while MessageRelayTool client close procedure.", t) }

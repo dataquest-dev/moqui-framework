@@ -225,8 +225,10 @@ public class StompClient {
 				Map<String, String> messageHeader = new TreeMap<String, String>();
 
 				// use login from StompClient headers
-				if (headers.containsKey("login")) messageHeader.put("login", "operator");
-				if (headers.containsKey("passcode")) messageHeader.put("passcode", "operator");
+				if (connection.getHeaders().containsKey("login"))
+					messageHeader.put("login", connection.getHeaders().get("login"));
+				if (connection.getHeaders().containsKey("passcode"))
+					messageHeader.put("passcode", connection.getHeaders().get("passcode"));
 				messageHeader.put("accept-version", "1.2");
 				messageHeader.put("heart-beat", heartbeat.getOutgoing() + "," + heartbeat.getIncoming());
 
