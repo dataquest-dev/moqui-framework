@@ -15,6 +15,7 @@ import org.moqui.impl.entity.condition.ConditionField
 import org.moqui.impl.entity.condition.EntityConditionImplBase
 import org.moqui.impl.entity.condition.FieldValueCondition
 import org.moqui.impl.entity.condition.ListCondition
+import org.moqui.util.CollectionUtilities
 import org.moqui.util.ObjectUtilities
 import org.moqui.util.RestClient
 import org.slf4j.Logger
@@ -35,6 +36,7 @@ class EndpointServiceHandler {
     private static String CONST_AUTO_CREATE_PKEY = 'autoCreatePrimaryKey'
     private static String CONST_PREFER_OBJECT_IN_RETURN = 'preferObjectInReturn'
     private static String CONST_RENAME_MAP = 'renameMap'
+    private static String CONST_CONVERT_OUTPUT_TO_FLATMAP = 'convertToFlatMap'
 
     /*
     REQUEST ATTRIBUTES
@@ -179,20 +181,19 @@ class EndpointServiceHandler {
         def sortedMap = recordMap.sort({m1, m2 -> m1.key <=> m2.key})
 
         // change to list, if set in such way
-        if (args[CONST_CONVERT_OUTPUT_TO_LIST] == true)
-        {
+        if (args[CONST_CONVERT_OUTPUT_TO_LIST] == true) {
             def conv2List = []
-            sortedMap.each {it->
+            sortedMap.each { it ->
                 conv2List.push(it.value)
             }
 
-            if (conv2List.size() == 1)
-            {
+            if (conv2List.size() == 1) {
                 return conv2List[0]
             } else {
                 return conv2List
             }
-
+        } else if (args[CONST_CONVERT_OUTPUT_TO_FLATMAP] == true){
+            return CollectionUtilities.flattenNestedMap(sortedMap)
         } else {
             return sortedMap
         }
@@ -217,7 +218,7 @@ class EndpointServiceHandler {
     {
         // allow timestamps? must be explicitly set
         def timestamps = ["lastUpdatedStamp", "creationTime"]
-        if (!args[CONST_ALLOW_TIMESTAMPS] && timestamps.contains(fieldName)) return false
+        if (timestamps.contains(fieldName)) if (args[CONST_ALLOW_TIMESTAMPS]) return true
 
         switch(args[CONST_ALLOWED_FIELDS].getClass().simpleName)
         {
