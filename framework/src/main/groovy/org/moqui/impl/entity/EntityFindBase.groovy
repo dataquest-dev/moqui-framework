@@ -107,7 +107,7 @@ abstract class EntityFindBase implements EntityFind {
     @Override String getEntity() { return entityName }
 
     protected boolean allowExtraField() {
-        return efi.entityDbMeta.checkAllowExtraFields(entityDef.groupName)
+        return efi.entityDbMeta.allowExtraFields(entityDef.groupName)
     }
 
     // ======================== Conditions (Where and Having) =================

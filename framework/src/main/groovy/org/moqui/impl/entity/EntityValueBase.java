@@ -80,7 +80,7 @@ public abstract class EntityValueBase implements EntityValue {
         entityName = ed.fullEntityName;
         entityDefinitionTransient = ed;
         valueMapInternal = new LiteStringMap<>(ed.allFieldNameList.size()).useManualIndex();
-        flexibleSchema = ed.efi.getEntityDbMeta().checkAllowExtraFields(ed.groupName);
+        flexibleSchema = ed.efi.getEntityDbMeta().allowExtraFields(ed.groupName);
     }
 
     @Override public void writeExternal(ObjectOutput out) throws IOException {

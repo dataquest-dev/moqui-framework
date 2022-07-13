@@ -218,7 +218,10 @@ class EndpointServiceHandler {
     {
         // allow timestamps? must be explicitly set
         def timestamps = ["lastUpdatedStamp", "creationTime"]
-        if (timestamps.contains(fieldName)) if (args[CONST_ALLOW_TIMESTAMPS]) return true
+        if (timestamps.contains(fieldName))
+        {
+            return args[CONST_ALLOW_TIMESTAMPS]
+        }
 
         switch(args[CONST_ALLOWED_FIELDS].getClass().simpleName)
         {
@@ -400,7 +403,7 @@ class EndpointServiceHandler {
         //      we do not want list as output
         if (!args.containsKey(CONST_CONVERT_OUTPUT_TO_LIST)) args.put(CONST_CONVERT_OUTPUT_TO_LIST, false)
 
-        //      we do not want timestamp fields
+        //      we do not want timestamp fields, by default
         if (!args.containsKey(CONST_ALLOW_TIMESTAMPS)) args.put(CONST_ALLOW_TIMESTAMPS, false)
 
         //      by default, let the entity manager create primary key
