@@ -1,5 +1,6 @@
 package dtq.rockycube.endpoint
 
+import com.cronutils.model.field.value.FieldValue
 import com.google.gson.Gson
 import dtq.rockycube.entity.EntityHelper
 import org.moqui.Moqui
@@ -9,8 +10,11 @@ import org.moqui.entity.EntityException
 import org.moqui.entity.EntityFind
 import org.moqui.entity.EntityList
 import org.moqui.entity.EntityValue
+import org.moqui.impl.ViUtilities
 import org.moqui.impl.context.ExecutionContextFactoryImpl
+import org.moqui.impl.entity.EntityConditionFactoryImpl
 import org.moqui.impl.entity.EntityDefinition
+import org.moqui.impl.entity.condition.BasicJoinCondition
 import org.moqui.impl.entity.condition.ConditionField
 import org.moqui.impl.entity.condition.EntityConditionImplBase
 import org.moqui.impl.entity.condition.FieldValueCondition
@@ -23,20 +27,22 @@ import org.slf4j.LoggerFactory
 
 import javax.servlet.http.HttpServletResponse
 import java.nio.charset.StandardCharsets
+import java.util.regex.Pattern
 
 class EndpointServiceHandler {
     protected final static Logger logger = LoggerFactory.getLogger(EndpointServiceHandler.class);
     private ExecutionContext ec
     private ExecutionContextFactoryImpl ecfi
     private EntityHelper meh
-    private static String CONST_UPDATE_IF_EXISTS = 'updateIfExists'
-    private static String CONST_ALLOWED_FIELDS = 'allowedFields'
-    private static String CONST_CONVERT_OUTPUT_TO_LIST = 'convertToList'
-    private static String CONST_ALLOW_TIMESTAMPS = 'allowTimestamps'
-    private static String CONST_AUTO_CREATE_PKEY = 'autoCreatePrimaryKey'
-    private static String CONST_PREFER_OBJECT_IN_RETURN = 'preferObjectInReturn'
-    private static String CONST_RENAME_MAP = 'renameMap'
-    private static String CONST_CONVERT_OUTPUT_TO_FLATMAP = 'convertToFlatMap'
+    private static String CONST_UPDATE_IF_EXISTS                = 'updateIfExists'
+    private static String CONST_ALLOWED_FIELDS                  = 'allowedFields'
+    private static String CONST_CONVERT_OUTPUT_TO_LIST          = 'convertToList'
+    private static String CONST_ALLOW_TIMESTAMPS                = 'allowTimestamps'
+    private static String CONST_AUTO_CREATE_PKEY                = 'autoCreatePrimaryKey'
+    private static String CONST_PREFER_OBJECT_IN_RETURN         = 'preferObjectInReturn'
+    private static String CONST_RENAME_MAP                      = 'renameMap'
+    private static String CONST_CONVERT_OUTPUT_TO_FLATMAP       = 'convertToFlatMap'
+    private static String CONST_COMPLEX_CONDITION_RULE          = 'complexCondition'
 
     /*
     REQUEST ATTRIBUTES
@@ -289,84 +295,144 @@ class EndpointServiceHandler {
         this.args = ec.context.args?:[:] as HashMap<String, Object>
     }
 
+    // good old recursion once again
+    // we need to process special string and return complex condition out of it
+    private EntityConditionImplBase recCondition(String ruleIn, ArrayList term)
+    {
+        // if it's simple component, a number, return baseCondition
+        def recSingle = Pattern.compile("^(\\d)\$")
+        def mSingle = recSingle.matcher(ruleIn)
+        if (mSingle)
+        {
+            def groupNum = mSingle.group(1).toString().toInteger()
+            HashMap<String, Object> fieldCond = term.get(groupNum - 1)
+            return getSingleFieldCondition(fieldCond)
+        }
+
+        // use regex to search for both OPERATOR and CONTENT itself
+        def rec = Pattern.compile("^(AND|OR)\\((.+)\\)")
+        def m = rec.matcher(ruleIn)
+        boolean entireListCond = m.matches()
+        // 1. if string matches pattern from above, then it's the entire condition
+        // 2. if not, than we may have a list in place
+        if (!entireListCond)
+        {
+            // then, split them using comma and return one by one
+            // def items = ViUtilities.splitWithBracketsCheck(ruleIn)
+            def items = ruleIn.split(",")
+
+            List<EntityCondition> res = new ArrayList()
+            items.each {it->
+                res.add(recCondition(it, term))
+            }
+            return res as EntityConditionImplBase
+        }
+
+        def joinOp = EntityCondition.JoinOperator.AND
+        switch (m.group(1))
+        {
+            case "OR":
+                joinOp = EntityCondition.JoinOperator.OR
+                break
+        }
+        return new ListCondition(recCondition(m.group(2), term), joinOp)
+    }
+
+    private EntityConditionImplBase extractComplexCondition(Object term, String rule)
+    {
+        return recCondition(rule, term as ArrayList)
+    }
+
+    private static FieldValueCondition getSingleFieldCondition(HashMap<String, Object> singleTerm)
+    {
+        // check required fields
+        if (!singleTerm.containsKey("field")) throw new EntityException("Field condition not set correctly, 'field' missing [${singleTerm}]")
+        if (!singleTerm.containsKey("value")) throw new EntityException("Field condition not set correctly, 'value' missing [${singleTerm}]")
+
+        def compOperator = EntityCondition.ComparisonOperator.EQUALS
+
+        // logger.debug("singleTerm.value.getClass() = ${singleTerm.value.getClass().simpleName}")
+        if (singleTerm.containsKey("operator"))
+        {
+            switch(singleTerm["operator"].toString().toLowerCase())
+            {
+                case "=":
+                case "eq":
+                case "equal":
+                case "equals":
+                    // do nothing
+                    break
+                case "!=":
+                case "not-equal":
+                    compOperator = EntityCondition.ComparisonOperator.NOT_EQUAL
+                    break
+                case ">":
+                case "gt":
+                    compOperator = EntityCondition.ComparisonOperator.GREATER_THAN
+                    break
+                case ">=":
+                case "gte":
+                    compOperator = EntityCondition.ComparisonOperator.GREATER_THAN_EQUAL_TO
+                    break
+                case "<":
+                case "lt":
+                    compOperator = EntityCondition.ComparisonOperator.LESS_THAN
+                    break
+                case "<=":
+                case "lte":
+                    compOperator = EntityCondition.ComparisonOperator.LESS_THAN_EQUAL_TO
+                    break
+                case "like":
+                    compOperator = EntityCondition.ComparisonOperator.LIKE
+                    break
+                case "not-like":
+                    compOperator = EntityCondition.ComparisonOperator.NOT_LIKE
+                    break
+                case "in":
+                    compOperator = EntityCondition.ComparisonOperator.IN
+                    if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
+                    break
+                case "not-in":
+                    compOperator = EntityCondition.ComparisonOperator.NOT_IN
+                    if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
+                    break
+                case "between":
+                    compOperator = EntityCondition.ComparisonOperator.BETWEEN
+                    if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
+                    if (singleTerm.value.size() != 2) throw new EntityException("Operator requires exactly two values in array")
+                    break
+                case "not-between":
+                    compOperator = EntityCondition.ComparisonOperator.NOT_BETWEEN
+                    if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
+                    if (singleTerm.value.size() != 2) throw new EntityException("Operator requires exactly two values in array")
+                    break
+                case "text":
+                    compOperator = EntityCondition.ComparisonOperator.TEXT
+                    break
+            }
+        }
+
+        return new FieldValueCondition(
+                new ConditionField((String) singleTerm.field),
+                compOperator,
+                (Object) singleTerm.value
+        )
+    }
+
     private EntityConditionImplBase extractQueryCondition(Object term)
     {
         // no Strings as term
         if (term.getClass().simpleName == "String") throw new EntityException("Unsupported type for Term: String")
 
-        def resListCondition = []
-        for (HashMap<String, Object> singleTerm in term) {
-            def compOperator = EntityCondition.ComparisonOperator.EQUALS
-
-            // logger.info("singleTerm.value.getClass() = ${singleTerm.value.getClass().simpleName}")
-            if (singleTerm.containsKey("operator"))
-            {
-                switch(singleTerm["operator"].toString().toLowerCase())
-                {
-                    case "=":
-                    case "eq":
-                    case "equal":
-                    case "equals":
-                        // do nothing
-                        break
-                    case "!=":
-                    case "not-equal":
-                        compOperator = EntityCondition.ComparisonOperator.NOT_EQUAL
-                        break
-                    case ">":
-                    case "gt":
-                        compOperator = EntityCondition.ComparisonOperator.GREATER_THAN
-                        break
-                    case ">=":
-                    case "gte":
-                        compOperator = EntityCondition.ComparisonOperator.GREATER_THAN_EQUAL_TO
-                        break
-                    case "<":
-                    case "lt":
-                        compOperator = EntityCondition.ComparisonOperator.LESS_THAN
-                        break
-                    case "<=":
-                    case "lte":
-                        compOperator = EntityCondition.ComparisonOperator.LESS_THAN_EQUAL_TO
-                        break
-                    case "like":
-                        compOperator = EntityCondition.ComparisonOperator.LIKE
-                        break
-                    case "not-like":
-                        compOperator = EntityCondition.ComparisonOperator.NOT_LIKE
-                        break
-                    case "in":
-                        compOperator = EntityCondition.ComparisonOperator.IN
-                        if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
-                        break
-                    case "not-in":
-                        compOperator = EntityCondition.ComparisonOperator.NOT_IN
-                        if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
-                        break
-                    case "between":
-                        compOperator = EntityCondition.ComparisonOperator.BETWEEN
-                        if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
-                        if (singleTerm.value.size() != 2) throw new EntityException("Operator requires exactly two values in array")
-                        break
-                    case "not-between":
-                        compOperator = EntityCondition.ComparisonOperator.NOT_BETWEEN
-                        if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
-                        if (singleTerm.value.size() != 2) throw new EntityException("Operator requires exactly two values in array")
-                        break
-                    case "text":
-                        compOperator = EntityCondition.ComparisonOperator.TEXT
-                        break
-                }
-            }
-
-            resListCondition.add(
-                    new FieldValueCondition(
-                            new ConditionField((String) singleTerm.field),
-                            compOperator,
-                            (Object) singleTerm.value
-                    )
-            )
+        // should there be an argument specifying how the complex condition
+        // must be set, let's do it this way
+        if (this.args.containsKey(CONST_COMPLEX_CONDITION_RULE)) {
+            return this.extractComplexCondition(term, this.args[CONST_COMPLEX_CONDITION_RULE] as String)
         }
+
+        // otherwise make it simple and add `OR` between all conditions
+        def resListCondition = []
+        for (HashMap<String, Object> singleTerm in term) resListCondition.add(getSingleFieldCondition(term))
         return new ListCondition(resListCondition, EntityCondition.JoinOperator.OR)
     }
 

@@ -82,14 +82,4 @@ class EntityHelperTests extends Specification {
         then:
         1 == 1
     }
-
-    // ViUtilities tests
-    def test_to_LocalDate_conversion() {
-        when:
-
-        assert ViUtilities.stringToDate("2022-04-01") == LocalDate.of(2022, 4, 1)
-
-        then:
-        1 == 1
-    }
 }

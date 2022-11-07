@@ -1,0 +1,44 @@
+[
+  [
+    [
+      "moqui.basic.Enumeration",
+      [
+        {
+          "value": "ArtifactType",
+          "field": "enumTypeId"
+        },
+        {
+          "value": "Entity",
+          "field": "description"
+        },
+        {
+          "value": "ComparisonOperator",
+          "field": "enumTypeId"
+        }
+      ],
+      {
+        "complexCondition": "AND(OR(1,2),3)"
+      }
+    ],
+    7
+  ],
+  [
+    [
+      "moqui.basic.Enumeration",
+      [
+        {
+          "value": "ArtifactType",
+          "field": "enumTypeId"
+        },
+        {
+          "value": "Entity",
+          "field": "description"
+        }
+      ],
+      {
+        "complexCondition": "AND(1,2)"
+      }
+    ],
+    1
+  ]
+]

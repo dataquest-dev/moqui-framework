@@ -90,6 +90,18 @@ class ViUtilities {
         return inputValue.replaceAll(",", ".")
     }
 
+    // we have a list, let's find a comma that is not within brackets
+    // e.g. `OR(1,AND(5,6)),AND(3,4)`
+    static final ArrayList splitWithBracketsCheck(String inputValue) {
+        def lastIndex = 0
+        def commas = inputValue.findAll(","){ match ->
+                lastIndex = inputValue.indexOf(match, lastIndex+1)
+            return lastIndex
+        }
+
+        return ['A', 'B']
+    }
+
     /*QUERY HELPERS*/
     static String calcPagedQuery(String query, Integer pageIndex, Integer pageSize)
     {
