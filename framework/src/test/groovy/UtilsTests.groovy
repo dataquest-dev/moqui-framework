@@ -29,8 +29,11 @@ class UtilsTests extends Specification {
         when:
 
         assert ViUtilities.splitWithBracketsCheck("OR(1,AND(5,6)),AND(3,4)") == ["OR(1,AND(5,6))", "AND(3,4)"]
+        assert ViUtilities.splitWithBracketsCheck("OR(1,AND(5,6)),AND(AND(11,10, OR(7,8)),4)") == ["OR(1,AND(5,6))", "AND(AND(11,10, OR(7,8)),4)"]
 
         then:
         1 == 1
     }
+
+
 }

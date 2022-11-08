@@ -17,10 +17,33 @@
         }
       ],
       {
-        "complexCondition": "AND(OR(1,2),3)"
+        "complexCondition": "3"
       }
     ],
-    7
+    15
+  ],
+  [
+    [
+      "moqui.basic.Enumeration",
+      [
+        {
+          "value": "ArtifactType",
+          "field": "enumTypeId"
+        },
+        {
+          "value": "Entity",
+          "field": "description"
+        },
+        {
+          "value": "ComparisonOperator",
+          "field": "enumTypeId"
+        }
+      ],
+      {
+        "complexCondition": "OR(AND(1,2),3)"
+      }
+    ],
+    16
   ],
   [
     [

@@ -60,9 +60,9 @@ class EndpointTests extends Specification {
                             )
                             .call()
 
-
                     // assert equality between JSON returned and the one set in the expected
-                    assert enums != null
+                    assert enums
+                    assert enums.data
                     assert enums.data.size() == expected
                 })
 

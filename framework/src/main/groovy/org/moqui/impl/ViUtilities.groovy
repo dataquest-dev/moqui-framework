@@ -92,14 +92,94 @@ class ViUtilities {
 
     // we have a list, let's find a comma that is not within brackets
     // e.g. `OR(1,AND(5,6)),AND(3,4)`
-    static final ArrayList splitWithBracketsCheck(String inputValue) {
+    static final ArrayList splitWithBracketsCheck(String inputValue, String splitRegex = ",") {
         def lastIndex = 0
-        def commas = inputValue.findAll(","){ match ->
-                lastIndex = inputValue.indexOf(match, lastIndex+1)
+        def separatorsPos = inputValue.findAll(splitRegex){ match ->
+            lastIndex = inputValue.indexOf(match, lastIndex+1)
             return lastIndex
         }
 
-        return ['A', 'B']
+        Integer inputLen = inputValue.length()
+        List<Integer> validSeparators = []
+
+        // when, comma is identified, see left-right, whether there is anything that resembles a
+        // brackets, so that we know we ara inside one
+        separatorsPos.each {Integer sepPos->
+            // move to left
+            def isValid = any { {sepPos}
+                // default flags
+                def toLeftValid = false
+                def toRightValid = false
+                def stopLeftCheck = false
+                def stopRightCheck = false
+
+                for (Integer i = 1; (sepPos - i) >= 0 || (inputLen - i) >= 0; i++)
+                {
+                    def toLeft = sepPos - i
+                    def toRight = sepPos + i
+
+                    // if (toLeft >= 0) {System.out.println("To left: ${inputValue.charAt(toLeft)}")}
+                    // if (toRight < inputLen) {System.out.println("To right: ${inputValue.charAt(toRight)}")}
+
+                    // check to the left
+                    if (toLeft >= 0 && !stopLeftCheck)
+                    {
+                        // OK if `right bracket` found - can stop checking
+                        // BAD if `left bracket` found - can quit entire procedure
+                        def toLeftChar = inputValue.charAt(toLeft)
+                        if (toLeftChar == ')'.toCharacter())
+                        {
+                            toLeftValid = true
+                            stopLeftCheck = true
+                        } else if (toLeftChar == '('.toCharacter())
+                        {
+                            return false
+                        } else {
+                            toLeftValid = true
+                        }
+                    }
+
+                    // check to the right
+                    if (toRight < inputLen && !stopRightCheck)
+                    {
+                        // OK if `left bracket` found - can stop checking
+                        // BAD if `right bracket` found - can quit entire procedure
+                        def toRightChar = inputValue.charAt(toRight)
+                        if (toRightChar == '('.toCharacter())
+                        {
+                            toRightValid = true
+                            stopRightCheck = true
+                        } else if (toRightChar == ')'.toCharacter())
+                        {
+                            return false
+                        } else {
+                            toRightValid = true
+                        }
+                    }
+                    // shortcut
+                    if (stopLeftCheck && toLeftValid && stopRightCheck && toRightValid) return true
+                }
+                return toLeftValid && toRightValid
+            }
+            if (isValid) validSeparators.add(sepPos)
+        }
+
+        // return single array if no separators found
+        if (validSeparators.empty) return [inputValue]
+
+        // add zero as first separator - to make the cycle beneath more usable
+        validSeparators.add(inputLen)
+
+        def res = []
+        Integer start = 0
+        for (Integer sep in validSeparators)
+        {
+            res.add(inputValue.substring(start, sep))
+            // move start
+            start = sep + 1
+        }
+
+        return res
     }
 
     /*QUERY HELPERS*/

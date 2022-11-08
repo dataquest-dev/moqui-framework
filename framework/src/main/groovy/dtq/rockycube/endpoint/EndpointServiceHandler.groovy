@@ -318,8 +318,7 @@ class EndpointServiceHandler {
         if (!entireListCond)
         {
             // then, split them using comma and return one by one
-            // def items = ViUtilities.splitWithBracketsCheck(ruleIn)
-            def items = ruleIn.split(",")
+            def items = ViUtilities.splitWithBracketsCheck(ruleIn, ",")
 
             List<EntityCondition> res = new ArrayList()
             items.each {it->
