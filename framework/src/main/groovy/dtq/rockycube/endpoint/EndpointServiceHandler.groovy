@@ -312,10 +312,10 @@ class EndpointServiceHandler {
         // use regex to search for both OPERATOR and CONTENT itself
         def rec = Pattern.compile("^(AND|OR)\\((.+)\\)")
         def m = rec.matcher(ruleIn)
-        boolean entireListCond = m.matches()
+        boolean isEntireListCond = m.matches()
         // 1. if string matches pattern from above, then it's the entire condition
         // 2. if not, than we may have a list in place
-        if (!entireListCond)
+        if (!isEntireListCond)
         {
             // then, split them using comma and return one by one
             def items = ViUtilities.splitWithBracketsCheck(ruleIn, ",")
@@ -334,12 +334,21 @@ class EndpointServiceHandler {
                 joinOp = EntityCondition.JoinOperator.OR
                 break
         }
-        return new ListCondition(recCondition(m.group(2), term), joinOp)
+        def entireCond = new ListCondition(recCondition(m.group(2), term), joinOp)
+        return entireCond
     }
 
     private EntityConditionImplBase extractComplexCondition(Object term, String rule)
     {
-        return recCondition(rule, term as ArrayList)
+        try {
+            return recCondition(rule, term as ArrayList)
+        } catch(Error err) {
+            logger.error(err.message)
+            throw new EndpointException("Invalid condition construction, possible StackOverflow error")
+        } catch(Exception exc) {
+            logger.error(exc.message)
+            throw new EndpointException("Invalid condition construction")
+        }
     }
 
     private static FieldValueCondition getSingleFieldCondition(HashMap<String, Object> singleTerm)
@@ -431,7 +440,7 @@ class EndpointServiceHandler {
 
         // otherwise make it simple and add `OR` between all conditions
         def resListCondition = []
-        for (HashMap<String, Object> singleTerm in term) resListCondition.add(getSingleFieldCondition(term))
+        for (HashMap<String, Object> singleTerm in term) resListCondition.add(getSingleFieldCondition(singleTerm))
         return new ListCondition(resListCondition, EntityCondition.JoinOperator.OR)
     }
 
@@ -644,9 +653,13 @@ class EndpointServiceHandler {
         // order by columns
         if (orderBy) evs.orderBy(orderBy)
 
+        // update pagination info, so that count of rows being displayed is returned
+        def result = evs.list()
+        pagination['displayed'] = result.size()
+
         return [
                 result: true,
-                data: this.fillResultset(evs.list()),
+                data: this.fillResultset(result),
                 pagination: pagination
         ]
     }
@@ -778,7 +791,7 @@ class EndpointServiceHandler {
                 .jsonObject(data)
         RestClient.RestResponse restResponse = restClient.call()
 
-        // chech status code
+        // check status code
         if (restResponse.statusCode != 200) {
             throw new EndpointException("Response with status ${restResponse.statusCode} returned: ${restResponse.reasonPhrase}")
         }

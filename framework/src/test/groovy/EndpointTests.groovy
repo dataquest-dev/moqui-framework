@@ -147,7 +147,6 @@ class EndpointTests extends Specification {
         1 == 1
     }
 
-
     def "test writing string into date"() {
         when:
 
