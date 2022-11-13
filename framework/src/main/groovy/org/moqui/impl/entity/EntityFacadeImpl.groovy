@@ -19,6 +19,7 @@ import org.moqui.BaseArtifactException
 import org.moqui.BaseException
 import org.moqui.context.ArtifactExecutionInfo
 import org.moqui.etl.SimpleEtl
+import org.moqui.impl.actions.XmlAction
 import org.moqui.impl.context.ArtifactExecutionInfoImpl
 import org.moqui.impl.context.ExecutionContextImpl
 import org.moqui.impl.entity.condition.EntityConditionImplBase
@@ -2302,4 +2303,18 @@ class EntityFacadeImpl implements EntityFacade {
         return qsl
     }
     void clearQueryStats() { queryStatsInfoMap.clear() }
+
+
+    // DTQ Customization
+    // allows adding extra rules related to entities (e.g. in SynchroMaster)
+    public void addNewEecaRule(String entityName, EntityEcaRule eer)
+    {
+        ArrayList<EntityEcaRule> lst = this.eecaRulesByEntityName.get(entityName)
+        if (lst == null) {
+            lst = new ArrayList<EntityEcaRule>()
+            this.eecaRulesByEntityName.put(entityName, lst)
+        }
+        lst.add(eer)
+
+    }
 }

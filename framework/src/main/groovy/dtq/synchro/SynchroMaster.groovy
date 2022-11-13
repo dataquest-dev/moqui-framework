@@ -4,8 +4,12 @@ import org.moqui.context.CacheFacade
 import org.moqui.context.ExecutionContextFactory
 import org.moqui.entity.EntityValue
 import org.moqui.context.ExecutionContext
+import org.moqui.impl.actions.XmlAction
+import org.moqui.impl.context.ExecutionContextFactoryImpl
 import org.moqui.impl.entity.EntityDefinition
+import org.moqui.impl.entity.EntityEcaRule
 import org.moqui.impl.entity.EntityFacadeImpl
+import org.moqui.util.MNode
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -51,7 +55,30 @@ class SynchroMaster {
             } else {
                 syncedEntities.put(sourceEntity, [cacheName])
             }
+
+            efi.addNewEecaRule(sourceEntity, calcRule("create", sourceEntity))
+            efi.addNewEecaRule(sourceEntity, calcRule("delete", sourceEntity))
+            efi.addNewEecaRule(sourceEntity, calcRule("update", sourceEntity))
         }
+    }
+
+    private EntityEcaRule calcRule(String operation, String entityName){
+        // create new MNode
+        def op = "on-${operation}".toString()
+        HashMap<String, String> eecaAttrs = [:]
+        eecaAttrs.put("entity", entityName)
+        eecaAttrs.put(op, "true")
+        MNode eecaRuleNode = new MNode("eeca", eecaAttrs)
+
+        // create new EECA rule for entity
+        def scriptNode = new MNode("script", [:], null, null, """
+                    def tool = ec.getTool("SynchroMaster", dtq.synchro.SynchroMaster.class)
+                    tool.reactToChange("${operation}", "${entityName}", testId)
+                """)
+        def actionNode = eecaRuleNode.append("actions", [:])
+        actionNode.append(scriptNode)
+
+        return new EntityEcaRule((ExecutionContextFactoryImpl) this.ecf, eecaRuleNode, "")
     }
 
     private boolean checkEntityKeys(EntityDefinition ed)
