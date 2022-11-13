@@ -38,7 +38,8 @@ class SynchroMaster {
             def ed = efi.getEntityDefinition(sourceEntity)
             if (!checkEntityKeys(ed)) return
 
-            def itemsToUpload = ecf.entity.find(sourceEntity).list()
+            //  only add those fields that are in entity definition
+            def itemsToUpload = ecf.entity.find(sourceEntity).selectFields(ed.nonPkFieldNames).list()
             for (def i in itemsToUpload)
             {
                 cache.put(i.get(ed.pkFieldNames[0]), i)
