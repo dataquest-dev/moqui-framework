@@ -1,10 +1,6 @@
 package dtq.synchro
 
-import org.moqui.context.CacheFacade
 import org.moqui.context.ExecutionContextFactory
-import org.moqui.entity.EntityValue
-import org.moqui.context.ExecutionContext
-import org.moqui.impl.actions.XmlAction
 import org.moqui.impl.context.ExecutionContextFactoryImpl
 import org.moqui.impl.entity.EntityDefinition
 import org.moqui.impl.entity.EntityEcaRule
@@ -13,10 +9,20 @@ import org.moqui.util.MNode
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import javax.cache.Cache
+
 class SynchroMaster {
+    public enum ActivitySemaphore {
+        ACTIVE,
+        INACTIVE,
+        NOT_SUPERVISED
+    }
+
     protected final Logger logger = LoggerFactory.getLogger(SynchroMaster.class)
     protected ExecutionContextFactory ecf
     protected EntityFacadeImpl efi
+    protected HashMap<String, ActivitySemaphore> semaphores = new HashMap<>()
+    protected HashMap<String, Long> missedSyncs = new HashMap<>()
 
     // list of caches the master is taking care of
     protected ArrayList<String> syncedCaches = new ArrayList<>()
@@ -31,22 +37,12 @@ class SynchroMaster {
 
         // process each item in configuration list
         cachesSetup.each {it->
-            def sourceEntity = it as String
-            def cacheName = "i.cache.${it}"
-
-            def cache = ecf.executionContext.cache.getCache(cacheName)
-            def ed = efi.getEntityDefinition(sourceEntity)
-            if (!checkEntityKeys(ed)) return
-
-            //  only add those fields that are in entity definition
-            def itemsToUpload = ecf.entity.find(sourceEntity).selectFields(ed.nonPkFieldNames).list()
-            for (def i in itemsToUpload)
-            {
-                cache.put(i.get(ed.pkFieldNames[0]), i)
-            }
+            def sourceEntity = it
+            def cacheName = this.startSynchronization(sourceEntity)
 
             // add cache name to list
             this.syncedCaches.add(cacheName)
+
             // if we have entity in our map, extend the list
             if (syncedEntities.containsKey(sourceEntity))
             {
@@ -61,6 +57,93 @@ class SynchroMaster {
             efi.addNewEecaRule(sourceEntity, calcRule("delete", sourceEntity))
             efi.addNewEecaRule(sourceEntity, calcRule("update", sourceEntity))
         }
+    }
+
+    private static String getCacheName(String entityName)
+    {
+        return "i.cache.${entityName}"
+    }
+
+    Cache getEntityCache(String entityName){
+        if (!syncedEntities.containsKey(entityName)) throw new SynchroException("No such entity is being cached")
+        return this.ecf.cache.getCache(getCacheName(entityName))
+    }
+
+    boolean getEntityIsSynced(String entityName)
+    {
+        return this.syncedEntities.containsKey(entityName)
+    }
+
+    boolean getIsSynced(String entityName) {
+        if (!this.semaphores.containsKey(entityName)) return false
+        return this.missedSyncs[entityName] == 0 && this.semaphores[entityName] == ActivitySemaphore.ACTIVE
+    }
+
+    Long getMissedSyncCounter(String entityName) {
+        if (!this.semaphores.containsKey(entityName)) return -1
+        return this.missedSyncs[entityName]
+    }
+
+    ActivitySemaphore getSemaphore(String entityName) {
+        if (!getEntityIsSynced(entityName)) return ActivitySemaphore.NOT_SUPERVISED
+        return this.semaphores[entityName]
+    }
+
+    public boolean disableSynchronization(String entityName)
+    {
+        if (!this.semaphores.containsKey(entityName)) throw new SynchroException("Entity not being supervised")
+        if (!this.getIsSynced(entityName)) {
+            logger.warn("Missed syncs present, please check")
+            return false
+        }
+
+        // no need to change anything
+        if (this.semaphores[entityName] == ActivitySemaphore.INACTIVE) return false
+
+        // switch and return true
+        this.semaphores[entityName] = ActivitySemaphore.INACTIVE
+        return true
+    }
+
+    public boolean enableSynchronization(String entityName)
+    {
+        if (!this.semaphores.containsKey(entityName)) throw new SynchroException("Entity not being supervised")
+        if (this.getIsSynced(entityName))
+        {
+            logger.warn("Synchronized, no need to make any changes")
+            return
+        }
+
+        // reload cache
+        return this.startSynchronization(entityName) != ""
+    }
+
+    // initialize cache and upload data from database table
+    private String startSynchronization(String entityName)
+    {
+        def cacheName = getCacheName(entityName)
+        def cache = ecf.executionContext.cache.getCache(cacheName)
+        def ed = efi.getEntityDefinition(entityName)
+        if (!checkEntityKeys(ed)) return
+
+        // reset cache
+        cache.clear()
+
+        // reset semaphores and missed counter
+        if (semaphores.containsKey(entityName)) {semaphores[entityName] = ActivitySemaphore.ACTIVE} else {semaphores.put(entityName, ActivitySemaphore.ACTIVE)}
+        if (missedSyncs.containsKey(entityName)) {missedSyncs[entityName] = 0} else {missedSyncs.put(entityName, 0)}
+
+        //  only add those fields that are in entity definition
+        def fields = ed.nonPkFieldNames
+        fields.add(ed.pkFieldNames[0])
+        def itemsToUpload = ecf.entity.find(entityName).selectFields(fields).list()
+        for (def i in itemsToUpload)
+        {
+            cache.put(i.get(ed.pkFieldNames[0]), i)
+        }
+
+        // return cache name, needed when running init phase
+        return cacheName
     }
 
     private EntityEcaRule calcRule(String operation, String entityName){
@@ -93,6 +176,9 @@ class SynchroMaster {
 
     public void reactToChange(String operationType, String entityName, Object recordId)
     {
+        // check semaphore, it may be temporarily disabled
+        if (this.semaphores[entityName] != ActivitySemaphore.ACTIVE) { logger.debug("Synchronization disabled"); this.missedSyncs[entityName] += 1; return }
+
         logger.debug("Performing reaction to change [${operationType}] of object [${recordId}] in entity [${entityName}]")
 
         if (!syncedEntities.containsKey(entityName)) {

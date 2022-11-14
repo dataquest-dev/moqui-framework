@@ -1,6 +1,6 @@
 package dtq.rockycube.endpoint
 
-import com.cronutils.model.field.value.FieldValue
+
 import com.google.gson.Gson
 import dtq.rockycube.entity.EntityHelper
 import org.moqui.Moqui
@@ -12,9 +12,7 @@ import org.moqui.entity.EntityList
 import org.moqui.entity.EntityValue
 import org.moqui.impl.ViUtilities
 import org.moqui.impl.context.ExecutionContextFactoryImpl
-import org.moqui.impl.entity.EntityConditionFactoryImpl
 import org.moqui.impl.entity.EntityDefinition
-import org.moqui.impl.entity.condition.BasicJoinCondition
 import org.moqui.impl.entity.condition.ConditionField
 import org.moqui.impl.entity.condition.EntityConditionImplBase
 import org.moqui.impl.entity.condition.FieldValueCondition
@@ -25,7 +23,6 @@ import org.moqui.util.RestClient
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import javax.servlet.http.HttpServletResponse
 import java.nio.charset.StandardCharsets
 import java.util.regex.Pattern
 
@@ -34,6 +31,8 @@ class EndpointServiceHandler {
     private ExecutionContext ec
     private ExecutionContextFactoryImpl ecfi
     private EntityHelper meh
+    private EntityCondition.JoinOperator defaultListJoinOper = EntityCondition.JoinOperator.OR
+
     private static String CONST_UPDATE_IF_EXISTS                = 'updateIfExists'
     private static String CONST_ALLOWED_FIELDS                  = 'allowedFields'
     private static String CONST_CONVERT_OUTPUT_TO_LIST          = 'convertToList'
@@ -42,7 +41,11 @@ class EndpointServiceHandler {
     private static String CONST_PREFER_OBJECT_IN_RETURN         = 'preferObjectInReturn'
     private static String CONST_RENAME_MAP                      = 'renameMap'
     private static String CONST_CONVERT_OUTPUT_TO_FLATMAP       = 'convertToFlatMap'
+    // when using complex query builder, use this parameter for setup (e.g. AND(1, OR(2, 3)))
     private static String CONST_COMPLEX_CONDITION_RULE          = 'complexCondition'
+    // intelligent-cache query feature is used by default, if you need to set this parameter to `true`
+    private static String CONST_ALLOW_ICACHE_QUERY              = 'allowICacheQuery'
+    private static String CONST_DEFAULT_LIST_JOIN_OPERATOR      = 'defaultListJoinOperator'
 
     /*
     REQUEST ATTRIBUTES
@@ -441,7 +444,7 @@ class EndpointServiceHandler {
         // otherwise make it simple and add `OR` between all conditions
         def resListCondition = []
         for (HashMap<String, Object> singleTerm in term) resListCondition.add(getSingleFieldCondition(singleTerm))
-        return new ListCondition(resListCondition, EntityCondition.JoinOperator.OR)
+        return new ListCondition(resListCondition, this.defaultListJoinOper)
     }
 
     private HashMap fetchPaginationInfo(
@@ -480,11 +483,29 @@ class EndpointServiceHandler {
         //      we do not want timestamp fields, by default
         if (!args.containsKey(CONST_ALLOW_TIMESTAMPS)) args.put(CONST_ALLOW_TIMESTAMPS, false)
 
-        //      by default, let the entity manager create primary key
+        //      let the entity manager create primary key
         if (!args.containsKey(CONST_AUTO_CREATE_PKEY)) args.put(CONST_AUTO_CREATE_PKEY, true)
 
-        //      by default, do not attempt to force-return an object
+        //      do not attempt to force-return an object
         if (!args.containsKey(CONST_PREFER_OBJECT_IN_RETURN)) args.put(CONST_PREFER_OBJECT_IN_RETURN, false)
+
+        //      use iCache query only when explicitly set
+        if (!args.containsKey(CONST_ALLOW_ICACHE_QUERY)) args.put(CONST_ALLOW_ICACHE_QUERY, false)
+
+        //      default join operator change
+        if (args.containsKey(CONST_DEFAULT_LIST_JOIN_OPERATOR))
+        {
+            switch(args[CONST_DEFAULT_LIST_JOIN_OPERATOR].toString().toLowerCase())
+            {
+                case "and":
+                case "&&":
+                    this.defaultListJoinOper = EntityCondition.JoinOperator.AND
+                    break
+                case "or":
+                case "||":
+                    this.defaultListJoinOper = EntityCondition.JoinOperator.OR
+            }
+        }
     }
 
     private void manipulateRecordId(HashMap<String, Object> record)
@@ -639,7 +660,8 @@ class EndpointServiceHandler {
         ]
     }
 
-    public HashMap fetchEntityData()
+    // fetch Entity data using `standard entity model`
+    private HashMap fetchEntityData_standard()
     {
         // pagination info
         def pagination = this.fetchPaginationInfo(entityName, pageIndex, pageSize, queryCondition)
@@ -662,6 +684,26 @@ class EndpointServiceHandler {
                 data: this.fillResultset(result),
                 pagination: pagination
         ]
+    }
+
+    // fetch Entity data using `intelligent cache model`
+    public HashMap fetchCachedData()
+    {
+        // features not supported
+        // 1. complex queries
+        if (args[CONST_COMPLEX_CONDITION_RULE]) throw new EndpointException("Complex queries not supported for i-cache")
+
+        // 2. pagination not supported
+        if (this.inputIndex > 1) throw new EndpointException("Pagination not supported for i-cache queries")
+    }
+
+    public HashMap fetchEntityData()
+    {
+        // only available when specific flag is switched
+        if (args[CONST_ALLOW_ICACHE_QUERY]) return this.fetchCachedData()
+
+        // standard way
+        return this.fetchEntityData_standard()
     }
 
     public HashMap updateEntityData()

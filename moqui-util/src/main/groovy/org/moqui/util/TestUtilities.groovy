@@ -39,6 +39,22 @@ public class TestUtilities {
         return gson.fromJson(new InputStreamReader(fisImport, StandardCharsets.UTF_8), ArrayList.class)
     }
 
+    public static void readFileLines(String[] resDirPath, String separator, Closure cb){
+        String[] importFilePath = extendList(RESOURCE_PATH, resDirPath)
+        FileInputStream fisImport = new FileInputStream(getInputFile(importFilePath))
+
+        def is = new InputStreamReader(fisImport, StandardCharsets.UTF_8)
+        def line
+        is.withReader {reader->
+            while ((line = reader.readLine()) != null) {
+                // split into array
+                String[] values = line.toString().split(separator)
+
+                cb(values)
+            }
+        }
+    }
+
     public static void testSingleFile(String[] resDirPath, Closure cb) throws IOException, URISyntaxException {
         String[] importFilePath = extendList(RESOURCE_PATH, resDirPath)
         FileInputStream fisImport = new FileInputStream(getInputFile(importFilePath))
