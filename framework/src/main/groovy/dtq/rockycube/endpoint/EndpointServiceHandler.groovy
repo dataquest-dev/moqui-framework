@@ -2,7 +2,9 @@ package dtq.rockycube.endpoint
 
 
 import com.google.gson.Gson
+import dtq.rockycube.cache.CacheQueryHandler
 import dtq.rockycube.entity.EntityHelper
+import dtq.synchro.SynchroMaster
 import org.moqui.Moqui
 import org.moqui.context.ExecutionContext
 import org.moqui.entity.EntityCondition
@@ -687,20 +689,46 @@ class EndpointServiceHandler {
     }
 
     // fetch Entity data using `intelligent cache model`
-    public HashMap fetchCachedData()
+    public HashMap fetchCachedData(SynchroMaster syncMaster)
     {
+        // is there a cache?
+        if (!syncMaster.getEntityIsSynced(this.entityName)) throw new EndpointException("Entity is not synced in a cache")
+
+
         // features not supported
         // 1. complex queries
         if (args[CONST_COMPLEX_CONDITION_RULE]) throw new EndpointException("Complex queries not supported for i-cache")
 
         // 2. pagination not supported
         if (this.inputIndex > 1) throw new EndpointException("Pagination not supported for i-cache queries")
+
+        // populate using query handler
+        def qh = new CacheQueryHandler()
+
+
+        return [
+                result: true,
+                data: [:]
+        ]
     }
 
     public HashMap fetchEntityData()
     {
         // only available when specific flag is switched
-        if (args[CONST_ALLOW_ICACHE_QUERY]) return this.fetchCachedData()
+        if (args[CONST_ALLOW_ICACHE_QUERY]) {
+            // SynchroMaster required
+            SynchroMaster syncMaster = null
+            try {
+                syncMaster = ec.getTool("SynchroMaster", SynchroMaster.class)
+            } catch (Exception exc) {
+                logger.error("Unable to use initialize SynchroMaster for cache-based data loading [${exc.message}]")
+            }
+
+            // if tool is not ready, throw exception, we expect it works
+            if (!syncMaster) throw new EndpointException("Unable to perform cache-based data loading, not cache handler")
+
+            return this.fetchCachedData(syncMaster)
+        }
 
         // standard way
         return this.fetchEntityData_standard()

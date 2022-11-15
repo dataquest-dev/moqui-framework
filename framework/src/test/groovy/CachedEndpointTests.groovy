@@ -47,6 +47,10 @@ class CachedEndpointTests extends Specification {
         def entityName = "moqui.test.TestEntity"
         def cntBeforeImport = ec.entity.find(entityName).count()
 
+        // 0. erase before
+        def condCreated = ec.entity.conditionFactory.makeCondition("testMedium", EntityCondition.ComparisonOperator.LIKE, "proj_%")
+        ec.entity.find(entityName).condition(condCreated).deleteAll()
+
         // 1. load data into entity
         // disable auto cache-refresh SynchroMaster before importing
         def tool = ec.getTool("SynchroMaster", SynchroMaster.class)
@@ -71,10 +75,14 @@ class CachedEndpointTests extends Specification {
                     def args = processed[2]
 
                     // it is perfectly fine to expect exception to be thrown around here
+                    def pageIndex = 1
+                    if (processed.size() >=4 ) pageIndex = processed[3]
+
                     def reportData = ec.service.sync().name("dtq.rockycube.EndpointServices.populate#EntityData").parameters([
                             entityName: ntt,
                             term      : term,
-                            args      : args
+                            args      : args,
+                            index     : pageIndex
                     ]).call() as HashMap
 
                     // exception is not throw, message is stored
@@ -85,15 +93,19 @@ class CachedEndpointTests extends Specification {
                     if (excMessage)
                     {
                         assert expected[0] == excMessage
+
+                        // cleanup errors
+                        ec.message.clearErrors()
                     } else {
+                        logger.info("Result: ${reportData.toString()}")
+                        logger.info("Expected: ${expected}")
+
                         assert expected == reportData
                     }
                 }
         )
 
         // 4. delete at the end
-        def condCreated = ec.entity.conditionFactory.makeCondition("testMedium", EntityCondition.ComparisonOperator.LIKE, "proj_%")
-
         tool.disableSynchronization(entityName)
         def deleted = ec.entity.find(entityName).condition(condCreated).deleteAll()
         def cntAfterDelete = ec.entity.find(entityName).count()

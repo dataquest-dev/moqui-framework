@@ -1,6 +1,56 @@
 [
   [
     [
+      "moqui.test.Foo",
+      [],
+      {
+        "allowICacheQuery": "true"
+      }
+    ],
+    ["Entity is not synced in a cache"]
+  ],
+  [
+    [
+      "moqui.test.TestEntity",
+      [
+        {
+          "value": "proj_A",
+          "field": "testMedium"
+        }
+      ],
+      {
+        "allowICacheQuery": "true"
+      },
+      2
+    ],
+    ["Pagination not supported for i-cache queries"]
+  ],
+  [
+    [
+      "moqui.test.TestEntity",
+      [
+        {
+          "value": "ArtifactType",
+          "field": "enumTypeId"
+        },
+        {
+          "value": "Entity",
+          "field": "description"
+        },
+        {
+          "value": "ComparisonOperator",
+          "field": "enumTypeId"
+        }
+      ],
+      {
+        "allowICacheQuery": "true",
+        "complexCondition": "AND(1,2,3)"
+      }
+    ],
+    ["Complex queries not supported for i-cache"]
+  ],
+  [
+    [
       "moqui.basic.TestEntity",
       [
         {
