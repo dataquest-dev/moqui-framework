@@ -9,6 +9,21 @@
         }
       ],
       {
+        "allowICacheQuery": "true"
+      }
+    ],
+    ["Fields to retrieve must be explicitly set"]
+  ],
+  [
+    [
+      "moqui.test.TestEntity",
+      [
+        {
+          "value": "proj_A",
+          "field": "testMedium"
+        }
+      ],
+      {
         "allowICacheQuery": "true",
         "allowedFields": ["testMedium"]
       }
