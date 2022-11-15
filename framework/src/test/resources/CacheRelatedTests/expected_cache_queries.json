@@ -1,0 +1,25 @@
+[
+  [
+    [
+      "moqui.basic.TestEntity",
+      [
+        {
+          "value": "ArtifactType",
+          "field": "enumTypeId"
+        },
+        {
+          "value": "Entity",
+          "field": "description"
+        },
+        {
+          "value": "ComparisonOperator",
+          "field": "enumTypeId"
+        }
+      ],
+      {
+        "allowICacheQuery": "true"
+      }
+    ],
+    ["Entity definition not found [moqui.basic.TestEntity], cannot continue with populating service output"]
+  ]
+]

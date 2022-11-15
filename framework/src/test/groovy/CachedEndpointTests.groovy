@@ -2,12 +2,16 @@ import com.google.gson.Gson
 import dtq.synchro.SynchroMaster
 import org.moqui.Moqui
 import org.moqui.entity.EntityCondition
+import org.moqui.entity.EntityException
+import org.moqui.impl.entity.EntityFacadeImpl
 import org.moqui.util.TestUtilities
 import org.moqui.context.ExecutionContext
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import spock.lang.Shared
 import spock.lang.Specification
+
+import java.nio.charset.StandardCharsets
 
 class CachedEndpointTests extends Specification {
     protected final static Logger logger = LoggerFactory.getLogger(CachedEndpointTests.class)
@@ -37,6 +41,9 @@ class CachedEndpointTests extends Specification {
     // testing endpoint data loading
     def test_cache_extraction() {
         when:
+
+        EntityFacadeImpl efi = (EntityFacadeImpl) ec.entity
+
         def entityName = "moqui.test.TestEntity"
         def cntBeforeImport = ec.entity.find(entityName).count()
 
@@ -56,7 +63,33 @@ class CachedEndpointTests extends Specification {
         assert testCache.size() == cntAfterImport
 
         // 3. perform few queries with different conditions set
+        TestUtilities.testSingleFile(
+                ["CacheRelatedTests", "expected_cache_queries.json"] as String[],
+                { Object processed, Object expected ->
+                    def ntt = processed[0]
+                    def term = processed[1]
+                    def args = processed[2]
 
+                    // it is perfectly fine to expect exception to be thrown around here
+                    def reportData = ec.service.sync().name("dtq.rockycube.EndpointServices.populate#EntityData").parameters([
+                            entityName: ntt,
+                            term      : term,
+                            args      : args
+                    ]).call() as HashMap
+
+                    // exception is not throw, message is stored
+                    def excMessage = ec.message.errors[0]
+
+                    // what is expected?
+                    // is it an exception or are we testing return value
+                    if (excMessage)
+                    {
+                        assert expected[0] == excMessage
+                    } else {
+                        assert expected == reportData
+                    }
+                }
+        )
 
         // 4. delete at the end
         def condCreated = ec.entity.conditionFactory.makeCondition("testMedium", EntityCondition.ComparisonOperator.LIKE, "proj_%")
@@ -64,10 +97,12 @@ class CachedEndpointTests extends Specification {
         tool.disableSynchronization(entityName)
         def deleted = ec.entity.find(entityName).condition(condCreated).deleteAll()
         def cntAfterDelete = ec.entity.find(entityName).count()
+
         assert deleted == imported
         assert cntAfterDelete == cntAfterImport - deleted
         assert tool.getMissedSyncCounter(entityName) == deleted
 
+        // check sizes after sync being back online
         tool.enableSynchronization(entityName)
         assert testCache.size() == cntAfterDelete
 
@@ -82,7 +117,7 @@ class CachedEndpointTests extends Specification {
         Long created = 0
 
         TestUtilities.readFileLines(["CacheRelatedTests", "import-batch.csv"] as String[], ";", { String[] values ->
-            logger.info("Values: ${values.join("+")}")
+//            logger.info("Values: ${values.join("+")}")
 
             // use entity model to create values
             def newNtt = ec.entity.makeValue(entityName).setAll([

@@ -2315,6 +2315,5 @@ class EntityFacadeImpl implements EntityFacade {
             this.eecaRulesByEntityName.put(entityName, lst)
         }
         lst.add(eer)
-
     }
 }

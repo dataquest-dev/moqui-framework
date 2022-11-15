@@ -53,9 +53,8 @@ class SynchroMaster {
                 syncedEntities.put(sourceEntity, [cacheName])
             }
 
-            efi.addNewEecaRule(sourceEntity, calcRule("create", sourceEntity))
-            efi.addNewEecaRule(sourceEntity, calcRule("delete", sourceEntity))
-            efi.addNewEecaRule(sourceEntity, calcRule("update", sourceEntity))
+            // create manually an EECA rule for handling events on entity
+            efi.addNewEecaRule(sourceEntity, createCrudRule(sourceEntity))
         }
     }
 
@@ -127,7 +126,7 @@ class SynchroMaster {
         if (!checkEntityKeys(ed)) return
 
         // reset cache
-        cache.clear()
+        cache.removeAll()
 
         // reset semaphores and missed counter
         if (semaphores.containsKey(entityName)) {semaphores[entityName] = ActivitySemaphore.ACTIVE} else {semaphores.put(entityName, ActivitySemaphore.ACTIVE)}
@@ -146,18 +145,20 @@ class SynchroMaster {
         return cacheName
     }
 
-    private EntityEcaRule calcRule(String operation, String entityName){
+    private EntityEcaRule createCrudRule(String entityName){
         // create new MNode
-        def op = "on-${operation}".toString()
         HashMap<String, String> eecaAttrs = [:]
         eecaAttrs.put("entity", entityName)
-        eecaAttrs.put(op, "true")
+        eecaAttrs.put("on-create", "true")
+        eecaAttrs.put("on-update", "true")
+        eecaAttrs.put("on-delete", "true")
+        eecaAttrs.put("run-on-error", "true")
         MNode eecaRuleNode = new MNode("eeca", eecaAttrs)
 
         // create new EECA rule for entity
         def scriptNode = new MNode("script", [:], null, null, """
                     def tool = ec.getTool("SynchroMaster", dtq.synchro.SynchroMaster.class)
-                    tool.reactToChange("${operation}", "${entityName}", testId)
+                    tool.reactToChange(eecaOperation, "${entityName}", testId)
                 """)
         def actionNode = eecaRuleNode.append("actions", [:])
         actionNode.append(scriptNode)
@@ -177,7 +178,11 @@ class SynchroMaster {
     public void reactToChange(String operationType, String entityName, Object recordId)
     {
         // check semaphore, it may be temporarily disabled
-        if (this.semaphores[entityName] != ActivitySemaphore.ACTIVE) { logger.debug("Synchronization disabled"); this.missedSyncs[entityName] += 1; return }
+        if (this.semaphores[entityName] != ActivitySemaphore.ACTIVE) {
+            logger.debug("Synchronization disabled");
+            this.missedSyncs[entityName] += 1;
+            return
+        }
 
         logger.debug("Performing reaction to change [${operationType}] of object [${recordId}] in entity [${entityName}]")
 
