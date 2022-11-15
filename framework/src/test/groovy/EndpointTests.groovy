@@ -160,6 +160,6 @@ class EndpointTests extends Specification {
 
         then:
 
-        rawStringWrite.size() == 1
+        rawStringWrite.data.size() == 1
     }
 }

@@ -3,8 +3,10 @@ package dtq.rockycube.endpoint
 
 import com.google.gson.Gson
 import dtq.rockycube.cache.CacheQueryHandler
+import dtq.rockycube.entity.ConditionHandler
 import dtq.rockycube.entity.EntityHelper
 import dtq.synchro.SynchroMaster
+import org.apache.shiro.crypto.hash.Hash
 import org.moqui.Moqui
 import org.moqui.context.ExecutionContext
 import org.moqui.entity.EntityCondition
@@ -15,6 +17,7 @@ import org.moqui.entity.EntityValue
 import org.moqui.impl.ViUtilities
 import org.moqui.impl.context.ExecutionContextFactoryImpl
 import org.moqui.impl.entity.EntityDefinition
+import org.moqui.impl.entity.EntityFacadeImpl
 import org.moqui.impl.entity.condition.ConditionField
 import org.moqui.impl.entity.condition.EntityConditionImplBase
 import org.moqui.impl.entity.condition.FieldValueCondition
@@ -298,55 +301,13 @@ class EndpointServiceHandler {
         this.pageSize = (Integer) ec.context.size?:20
         this.orderBy = (ArrayList) ec.context.orderBy?:[]
         this.args = ec.context.args?:[:] as HashMap<String, Object>
-    }
-
-    // good old recursion once again
-    // we need to process special string and return complex condition out of it
-    private EntityConditionImplBase recCondition(String ruleIn, ArrayList term)
-    {
-        // if it's simple component, a number, return baseCondition
-        def recSingle = Pattern.compile("^(\\d)\$")
-        def mSingle = recSingle.matcher(ruleIn)
-        if (mSingle)
-        {
-            def groupNum = mSingle.group(1).toString().toInteger()
-            HashMap<String, Object> fieldCond = term.get(groupNum - 1)
-            return getSingleFieldCondition(fieldCond)
-        }
-
-        // use regex to search for both OPERATOR and CONTENT itself
-        def rec = Pattern.compile("^(AND|OR)\\((.+)\\)")
-        def m = rec.matcher(ruleIn)
-        boolean isEntireListCond = m.matches()
-        // 1. if string matches pattern from above, then it's the entire condition
-        // 2. if not, than we may have a list in place
-        if (!isEntireListCond)
-        {
-            // then, split them using comma and return one by one
-            def items = ViUtilities.splitWithBracketsCheck(ruleIn, ",")
-
-            List<EntityCondition> res = new ArrayList()
-            items.each {it->
-                res.add(recCondition(it, term))
-            }
-            return res as EntityConditionImplBase
-        }
-
-        def joinOp = EntityCondition.JoinOperator.AND
-        switch (m.group(1))
-        {
-            case "OR":
-                joinOp = EntityCondition.JoinOperator.OR
-                break
-        }
-        def entireCond = new ListCondition(recCondition(m.group(2), term), joinOp)
-        return entireCond
+//        this.fields = (ArrayList) ec.context.fields?:[]
     }
 
     private EntityConditionImplBase extractComplexCondition(Object term, String rule)
     {
         try {
-            return recCondition(rule, term as ArrayList)
+            return ConditionHandler.recCondition(rule, term as ArrayList)
         } catch(Error err) {
             logger.error(err.message)
             throw new EndpointException("Invalid condition construction, possible StackOverflow error")
@@ -354,82 +315,6 @@ class EndpointServiceHandler {
             logger.error(exc.message)
             throw new EndpointException("Invalid condition construction")
         }
-    }
-
-    private static FieldValueCondition getSingleFieldCondition(HashMap<String, Object> singleTerm)
-    {
-        // check required fields
-        if (!singleTerm.containsKey("field")) throw new EntityException("Field condition not set correctly, 'field' missing [${singleTerm}]")
-        if (!singleTerm.containsKey("value")) throw new EntityException("Field condition not set correctly, 'value' missing [${singleTerm}]")
-
-        def compOperator = EntityCondition.ComparisonOperator.EQUALS
-
-        // logger.debug("singleTerm.value.getClass() = ${singleTerm.value.getClass().simpleName}")
-        if (singleTerm.containsKey("operator"))
-        {
-            switch(singleTerm["operator"].toString().toLowerCase())
-            {
-                case "=":
-                case "eq":
-                case "equal":
-                case "equals":
-                    // do nothing
-                    break
-                case "!=":
-                case "not-equal":
-                    compOperator = EntityCondition.ComparisonOperator.NOT_EQUAL
-                    break
-                case ">":
-                case "gt":
-                    compOperator = EntityCondition.ComparisonOperator.GREATER_THAN
-                    break
-                case ">=":
-                case "gte":
-                    compOperator = EntityCondition.ComparisonOperator.GREATER_THAN_EQUAL_TO
-                    break
-                case "<":
-                case "lt":
-                    compOperator = EntityCondition.ComparisonOperator.LESS_THAN
-                    break
-                case "<=":
-                case "lte":
-                    compOperator = EntityCondition.ComparisonOperator.LESS_THAN_EQUAL_TO
-                    break
-                case "like":
-                    compOperator = EntityCondition.ComparisonOperator.LIKE
-                    break
-                case "not-like":
-                    compOperator = EntityCondition.ComparisonOperator.NOT_LIKE
-                    break
-                case "in":
-                    compOperator = EntityCondition.ComparisonOperator.IN
-                    if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
-                    break
-                case "not-in":
-                    compOperator = EntityCondition.ComparisonOperator.NOT_IN
-                    if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
-                    break
-                case "between":
-                    compOperator = EntityCondition.ComparisonOperator.BETWEEN
-                    if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
-                    if (singleTerm.value.size() != 2) throw new EntityException("Operator requires exactly two values in array")
-                    break
-                case "not-between":
-                    compOperator = EntityCondition.ComparisonOperator.NOT_BETWEEN
-                    if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
-                    if (singleTerm.value.size() != 2) throw new EntityException("Operator requires exactly two values in array")
-                    break
-                case "text":
-                    compOperator = EntityCondition.ComparisonOperator.TEXT
-                    break
-            }
-        }
-
-        return new FieldValueCondition(
-                new ConditionField((String) singleTerm.field),
-                compOperator,
-                (Object) singleTerm.value
-        )
     }
 
     private EntityConditionImplBase extractQueryCondition(Object term)
@@ -445,7 +330,7 @@ class EndpointServiceHandler {
 
         // otherwise make it simple and add `OR` between all conditions
         def resListCondition = []
-        for (HashMap<String, Object> singleTerm in term) resListCondition.add(getSingleFieldCondition(singleTerm))
+        for (HashMap<String, Object> singleTerm in term) resListCondition.add(ConditionHandler.getSingleFieldCondition(singleTerm))
         return new ListCondition(resListCondition, this.defaultListJoinOper)
     }
 
@@ -694,7 +579,10 @@ class EndpointServiceHandler {
         // is there a cache?
         if (!syncMaster.getEntityIsSynced(this.entityName)) throw new EndpointException("Entity is not synced in a cache")
 
+        // is the cache synced?
+        if (!syncMaster.getIsSynced(this.entityName)) throw new EndpointException("Entity is not synchronized, cannot proceed")
 
+        // THESE MAY BE SUBJECT TO CHANGE
         // features not supported
         // 1. complex queries
         if (args[CONST_COMPLEX_CONDITION_RULE]) throw new EndpointException("Complex queries not supported for i-cache")
@@ -702,13 +590,35 @@ class EndpointServiceHandler {
         // 2. pagination not supported
         if (this.inputIndex > 1) throw new EndpointException("Pagination not supported for i-cache queries")
 
-        // populate using query handler
-        def qh = new CacheQueryHandler()
+        // 3. fields must be explicitly set
+        if (args[CONST_ALLOWED_FIELDS] == "*") throw new EndpointException("Fields to retrieve must be explicitly set")
+        if (!args[CONST_ALLOWED_FIELDS] instanceof List) throw new EndpointException("Fields to retrieve must be set as list")
 
+        // populate using query handler
+        def cacheUsed = syncMaster.getEntityCache(this.entityName)
+        def qh = new CacheQueryHandler(
+                cacheUsed,
+                this.ed
+        )
+
+        // IDs returned
+        def resIds = qh.fetch(this.defaultListJoinOper, term)
+
+        // now it's time to populate result
+        def res = new ArrayList()
+        def fields = (ArrayList<String>) args[CONST_ALLOWED_FIELDS]
+        resIds.each {it->
+            def fullEntity = (HashMap) cacheUsed.get(it)
+            def resMap = [:]
+            fields.each {f->
+                resMap.put(f, fullEntity.get(f))
+            }
+            res.add(resMap)
+        }
 
         return [
                 result: true,
-                data: [:]
+                data: res
         ]
     }
 

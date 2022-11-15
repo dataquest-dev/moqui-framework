@@ -97,10 +97,12 @@ class CachedEndpointTests extends Specification {
                         // cleanup errors
                         ec.message.clearErrors()
                     } else {
-                        logger.info("Result: ${reportData.toString()}")
+                        logger.info("Result: ${reportData.result}")
+                        logger.info("Result.data: ${reportData.data}")
                         logger.info("Expected: ${expected}")
 
-                        assert expected == reportData
+                        // expected value can be a list, as well as a primitive
+                        assert expected == reportData.data
                     }
                 }
         )

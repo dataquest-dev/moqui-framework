@@ -1,6 +1,22 @@
 [
   [
     [
+      "moqui.test.TestEntity",
+      [
+        {
+          "value": "proj_A",
+          "field": "testMedium"
+        }
+      ],
+      {
+        "allowICacheQuery": "true",
+        "allowedFields": ["testMedium"]
+      }
+    ],
+    [{"testMedium": "proj_A"}]
+  ],
+  [
+    [
       "moqui.test.Foo",
       [],
       {
