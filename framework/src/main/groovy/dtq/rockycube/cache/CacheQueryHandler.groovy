@@ -29,23 +29,27 @@ class CacheQueryHandler {
             boolean matches
             if (joinOperator == EntityCondition.JoinOperator.AND)
             {
-                matches = every { for (c in conditions) return evaluateCondition(c, item.value) }
+                matches = conditions.every {c-> return evaluateCondition(c, item.value) }
             } else {
-                matches = any { for (c in conditions) return evaluateCondition(c, item.value) }
+                matches = conditions.any {c-> return evaluateCondition(c, item.value) }
             }
 
-            if (matches) res.push(item.key)
+            if (matches) res.add(item.key)
         }
-        return res
+
+        return res.sort()
     }
 
     public static boolean evaluateCondition(FieldValueCondition cond, Object item){
+        def val = item.getAt(cond.fieldName)
+        def condVal = cond.value
+
         switch (cond.operator){
             case EntityCondition.ComparisonOperator.EQUALS:
-                return item.getAt(cond.fieldName) == cond.value
+                return val == condVal
                 break
             case EntityCondition.ComparisonOperator.NOT_EQUAL:
-                return item.getAt(cond.fieldName) != cond.value
+                return val != condVal
                 break
             default:
                 throw new EntityException("Operator [${cond.operator}] not supported when evaluating condition")

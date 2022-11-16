@@ -6,6 +6,50 @@
         {
           "value": "proj_A",
           "field": "testMedium"
+        },
+        {
+          "value": "proj_B",
+          "field": "testMedium"
+        }
+      ],
+      {
+        "allowICacheQuery": "true",
+        "allowedFields": ["testMedium"],
+        "defaultListJoinOperator": "AND"
+      }
+    ],
+    []
+  ],
+  [
+    [
+      "moqui.test.TestEntity",
+      [
+        {
+          "value": "proj_A",
+          "field": "testMedium"
+        },
+        {
+          "value": "proj_B",
+          "field": "testMedium"
+        }
+      ],
+      {
+        "allowICacheQuery": "true",
+        "allowedFields": ["testMedium"]
+      }
+    ],
+    [
+      {"testMedium": "proj_A"},
+      {"testMedium": "proj_B"}
+    ]
+  ],
+  [
+    [
+      "moqui.test.TestEntity",
+      [
+        {
+          "value": "proj_A",
+          "field": "testMedium"
         }
       ],
       {
