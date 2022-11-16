@@ -9,6 +9,63 @@
           "operator": "like"
         },
         {
+          "value": 150,
+          "field": "testNumberInteger",
+          "operator": "gte"
+        },
+        {
+          "value": 2500,
+          "field": "testNumberDecimal",
+          "operator": "lte"
+        }
+      ],
+      {
+        "allowICacheQuery": "true",
+        "allowedFields": ["testMedium"],
+        "defaultListJoinOperator": "AND"
+      }
+    ],
+    [
+      {"testMedium": "proj_A"},
+      {"testMedium": "proj_C"},
+      {"testMedium": "proj_D"}
+    ]
+  ],
+  [
+    [
+      "moqui.test.TestEntity",
+      [
+        {
+          "value": "proj_[\\w]",
+          "field": "testMedium",
+          "operator": "like"
+        },
+        {
+          "value": 2000,
+          "field": "testNumberInteger",
+          "operator": "gt"
+        }
+      ],
+      {
+        "allowICacheQuery": "true",
+        "allowedFields": ["testMedium"],
+        "defaultListJoinOperator": "AND"
+      }
+    ],
+    [
+      {"testMedium": "proj_E"}
+    ]
+  ],
+  [
+    [
+      "moqui.test.TestEntity",
+      [
+        {
+          "value": "proj_[\\w]",
+          "field": "testMedium",
+          "operator": "like"
+        },
+        {
           "value": ["proj_C", "proj_D", "proj_E"],
           "field": "testMedium",
           "operator": "not-in"

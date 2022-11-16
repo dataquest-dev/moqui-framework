@@ -31,7 +31,6 @@ class CacheQueryHandler {
             } else {
                 matches = conditions.any {c-> return ConditionHandler.evaluateCondition(c, item.value) }
             }
-
             if (matches) res.add(item.key)
         }
 

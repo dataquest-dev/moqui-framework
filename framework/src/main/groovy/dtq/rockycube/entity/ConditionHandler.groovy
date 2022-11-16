@@ -63,6 +63,11 @@ class ConditionHandler {
         return res
     }
 
+    private static boolean isArray(Object val)
+    {
+        return val.getClass().isArray() || val.getClass().name == "java.util.ArrayList"
+    }
+
     public static boolean evaluateCondition(FieldValueCondition cond, Object item){
         def val = item.getAt(cond.fieldName)
         def condVal = cond.value
@@ -72,16 +77,26 @@ class ConditionHandler {
                 return val == condVal
             case EntityCondition.ComparisonOperator.NOT_EQUAL:
                 return val != condVal
+            case EntityCondition.ComparisonOperator.GREATER_THAN:
+//                if (!val.toString().isNumber() || !condVal.toString().isNumber()) throw new EntityException("Both artifacts must be numeric when using 'GT' operator")
+                return val > condVal
+            case EntityCondition.ComparisonOperator.GREATER_THAN_EQUAL_TO:
+//                if (!val.toString().isNumber() || !condVal.toString().isNumber()) throw new EntityException("Both artifacts must be numeric when using 'GTE' operator")
+                return val >= condVal
+            case EntityCondition.ComparisonOperator.LESS_THAN:
+//                if (!val.toString().isNumber() || !condVal.toString().isNumber()) throw new EntityException("Both artifacts must be numeric when using 'LT' operator")
+                return val < condVal
+            case EntityCondition.ComparisonOperator.LESS_THAN_EQUAL_TO:
+//                if (!val.toString().isNumber() || !condVal.toString().isNumber()) throw new EntityException("Both artifacts must be numeric when using 'LTE' operator")
+                return val <= condVal
             case EntityCondition.ComparisonOperator.IN:
                 if (!val) return false
-                def isArr = condVal.getClass().isArray() || condVal.getClass().name == "java.util.ArrayList"
-                if (!isArr) throw new EntityException("Comparison value is not of type Array when using 'IN' operator")
+                if (!isArray(condVal)) throw new EntityException("Comparison value is not of type Array when using 'IN' operator")
                 ArrayList condArr = (ArrayList) condVal
                 return condArr.contains(val)
             case EntityCondition.ComparisonOperator.NOT_IN:
                 if (!val) return false
-                def isArr = condVal.getClass().isArray() || condVal.getClass().name == "java.util.ArrayList"
-                if (!isArr) throw new EntityException("Comparison value is not of type Array when using 'NOT_IN' operator")
+                if (!isArray(condVal)) throw new EntityException("Comparison value is not of type Array when using 'NOT_IN' operator")
                 ArrayList condArr = (ArrayList) condVal
                 return !condArr.contains(val)
             case EntityCondition.ComparisonOperator.LIKE:
