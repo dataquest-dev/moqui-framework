@@ -63,6 +63,34 @@ class ConditionHandler {
         return res
     }
 
+    public static boolean evaluateCondition(FieldValueCondition cond, Object item){
+        def val = item.getAt(cond.fieldName)
+        def condVal = cond.value
+
+        switch (cond.operator){
+            case EntityCondition.ComparisonOperator.EQUALS:
+                return val == condVal
+            case EntityCondition.ComparisonOperator.NOT_EQUAL:
+                return val != condVal
+            case EntityCondition.ComparisonOperator.IN:
+                return false
+            case EntityCondition.ComparisonOperator.LIKE:
+                // if null, return false
+                if (!val) return false
+                def rec = cond.value
+                def recLike = Pattern.compile(rec as String)
+                return recLike.matcher(val).matches()
+            case EntityCondition.ComparisonOperator.NOT_LIKE:
+                // if null, return false
+                if (!val) return false
+                def rec = cond.value
+                def recLike = Pattern.compile(rec as String)
+                return !recLike.matcher(val).matches()
+            default:
+                throw new EntityException("Operator [${cond.operator}] not supported when evaluating condition")
+        }
+    }
+
     public static FieldValueCondition getSingleFieldCondition(HashMap singleTerm)
     {
         // check required fields
@@ -106,6 +134,7 @@ class ConditionHandler {
                     compOperator = EntityCondition.ComparisonOperator.LIKE
                     break
                 case "not-like":
+                case "not_like":
                     compOperator = EntityCondition.ComparisonOperator.NOT_LIKE
                     break
                 case "in":
@@ -113,6 +142,7 @@ class ConditionHandler {
                     if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
                     break
                 case "not-in":
+                case "not_in":
                     compOperator = EntityCondition.ComparisonOperator.NOT_IN
                     if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
                     break
@@ -122,6 +152,7 @@ class ConditionHandler {
                     if (singleTerm.value.size() != 2) throw new EntityException("Operator requires exactly two values in array")
                     break
                 case "not-between":
+                case "not_between":
                     compOperator = EntityCondition.ComparisonOperator.NOT_BETWEEN
                     if (singleTerm.value.getClass().simpleName != "ArrayList") throw new EntityException("Operator requires List value, but was not provided")
                     if (singleTerm.value.size() != 2) throw new EntityException("Operator requires exactly two values in array")
