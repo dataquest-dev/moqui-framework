@@ -73,7 +73,17 @@ class ConditionHandler {
             case EntityCondition.ComparisonOperator.NOT_EQUAL:
                 return val != condVal
             case EntityCondition.ComparisonOperator.IN:
-                return false
+                if (!val) return false
+                def isArr = condVal.getClass().isArray() || condVal.getClass().name == "java.util.ArrayList"
+                if (!isArr) throw new EntityException("Comparison value is not of type Array when using 'IN' operator")
+                ArrayList condArr = (ArrayList) condVal
+                return condArr.contains(val)
+            case EntityCondition.ComparisonOperator.NOT_IN:
+                if (!val) return false
+                def isArr = condVal.getClass().isArray() || condVal.getClass().name == "java.util.ArrayList"
+                if (!isArr) throw new EntityException("Comparison value is not of type Array when using 'NOT_IN' operator")
+                ArrayList condArr = (ArrayList) condVal
+                return !condArr.contains(val)
             case EntityCondition.ComparisonOperator.LIKE:
                 // if null, return false
                 if (!val) return false

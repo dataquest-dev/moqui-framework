@@ -4,6 +4,52 @@
       "moqui.test.TestEntity",
       [
         {
+          "value": "proj_[\\w]",
+          "field": "testMedium",
+          "operator": "like"
+        },
+        {
+          "value": ["proj_C", "proj_D", "proj_E"],
+          "field": "testMedium",
+          "operator": "not-in"
+        }
+      ],
+      {
+        "allowICacheQuery": "true",
+        "allowedFields": ["testMedium"],
+        "defaultListJoinOperator": "AND"
+      }
+    ],
+    [
+      {"testMedium": "proj_A"},
+      {"testMedium": "proj_B"},
+      {"testMedium": "proj_F"}
+    ]
+  ],
+  [
+    [
+      "moqui.test.TestEntity",
+      [
+        {
+          "value": ["proj_C"],
+          "field": "testMedium",
+          "operator": "in"
+        }
+      ],
+      {
+        "allowICacheQuery": "true",
+        "allowedFields": ["testMedium"]
+      }
+    ],
+    [
+      {"testMedium": "proj_C"}
+    ]
+  ],
+  [
+    [
+      "moqui.test.TestEntity",
+      [
+        {
           "value": "proj_[A|D|E|F]",
           "field": "testMedium",
           "operator": "not-like"
