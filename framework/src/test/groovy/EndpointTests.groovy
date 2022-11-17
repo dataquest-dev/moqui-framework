@@ -132,11 +132,9 @@ class EndpointTests extends Specification {
                     def result = response.data
 
                     // log and store output
-                    String[] debugFilePath = TestUtilities.extendList(TestUtilities.RESOURCE_PATH, "__temp", "out.json")
-                    FileOutputStream debug = new FileOutputStream(TestUtilities.getInputFile(debugFilePath))
-                    Writer fw = new OutputStreamWriter(debug, StandardCharsets.UTF_8);
-                    fw.write(gson.toJson(result));
-                    fw.close();
+                    TestUtilities.dumpToDebug((String[])["__temp", "out.json"], {
+                        return gson.toJson(result)
+                    })
 
                     // assert equality between JSON returned and the one set in the expected
                     JsonAssert.setOptions(Option.IGNORING_ARRAY_ORDER, Option.IGNORING_EXTRA_FIELDS)

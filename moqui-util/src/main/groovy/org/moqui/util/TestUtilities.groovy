@@ -79,4 +79,32 @@ public class TestUtilities {
             cb(processedEntity, expectedValue)
         }
     }
+
+    // create debug Writer
+    private static Writer createDebugWriter(String[] debugTo)
+    {
+        // log and store output
+        String[] debugFilePath = extendList(RESOURCE_PATH, debugTo)
+        FileOutputStream debug = new FileOutputStream(getInputFile(debugFilePath))
+        return new OutputStreamWriter(debug, StandardCharsets.UTF_8)
+    }
+
+    // write to log, for debug purposes - entire string
+    public static void dumpToDebug(String[] debugTo, Closure cb)
+    {
+        def fw = createDebugWriter(debugTo)
+        fw.write(cb() as String)
+        fw.close();
+    }
+
+    // write to log - with per-line command
+    public static void dumpToDebugPerLine(String[] debugTo, Closure cb)
+    {
+        def fw = createDebugWriter(debugTo)
+
+        // attempt to write using closure
+        fw.withWriter {cb}
+
+        fw.close();
+    }
 }

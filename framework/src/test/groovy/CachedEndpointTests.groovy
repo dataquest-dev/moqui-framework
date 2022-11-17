@@ -124,6 +124,78 @@ class CachedEndpointTests extends Specification {
         1 == 1
     }
 
+    // test data fetch + generate comparison statistics
+    def test_cache_extraction_and_comparison() {
+        when:
+
+        EntityFacadeImpl efi = (EntityFacadeImpl) ec.entity
+
+        def entityName = "moqui.test.TestEntity"
+        def cntBeforeImport = ec.entity.find(entityName).count()
+
+        // 0. erase before
+        def condCreated = ec.entity.conditionFactory.makeCondition("testMedium", EntityCondition.ComparisonOperator.LIKE, "proj_%")
+        ec.entity.find(entityName).condition(condCreated).deleteAll()
+
+        // 1. load data into entity
+        def imported = this.importTestData(entityName)
+
+        // 2. perform queries with different conditions set
+        TestUtilities.testSingleFile(
+                ["CacheRelatedTests", "expected_query_comparison.json"] as String[],
+                { Object processed, Object expected ->
+                    def ntt = (String) processed[0]
+                    def term = (ArrayList) processed[1]
+                    def args = (HashMap) processed[2]
+
+                    // it is perfectly fine to expect exception to be thrown around here
+                    def pageIndex = (Long) 1
+                    if (processed.size() >=4 ) pageIndex = (Long) processed[3]
+
+                    // we have two calls:
+                    // 1. one using entity-cache
+                    // 2. the other using old method - the entity loader
+
+                    def srvName = "dtq.rockycube.EndpointServices.populate#EntityData"
+                    def argsCache = (HashMap) args
+                    argsCache.put("allowICacheQuery", true)
+
+                    // 1.
+                    def resCache = this.executeDataLoad(srvName, ntt, term, argsCache, pageIndex)
+                    def resStandard = this.executeDataLoad(srvName, ntt, term, args, pageIndex)
+
+                    // no exceptions expected
+                    assert ec.message.errors.isEmpty()
+
+                    // expected value can be a list, as well as a primitive
+                    assert expected == resCache.data
+                    assert expected == resStandard.data
+                }
+        )
+
+        // 4. delete at the end
+        def deleted = ec.entity.find(entityName).condition(condCreated).deleteAll()
+
+        then:
+        deleted == imported
+    }
+
+    private HashMap executeDataLoad(String srvName, String entityName, ArrayList term, HashMap args, Long pageIndex)
+    {
+        def reportData = ec.service.sync().name(srvName).parameters([
+                entityName: entityName,
+                term      : term,
+                args      : args,
+                index     : pageIndex
+        ]).call() as HashMap
+
+        def res = [
+                duration: 1,
+                data: reportData.data
+        ]
+    }
+
+
     // load into TestEntity from a CSV file
     // why CSV? CSV can be processed more easily hand-generated than JSON
     private Long importTestData(String entityName)
