@@ -5,7 +5,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement
 import groovy.transform.CompileStatic;
 import org.apache.commons.io.FileUtils;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.StandardCharsets
+import java.util.regex.Pattern;
 
 
 public class TestUtilities {
@@ -63,7 +64,7 @@ public class TestUtilities {
         ArrayList tests = gson.fromJson(new InputStreamReader(fisImport, StandardCharsets.UTF_8), ArrayList.class)
 
         // cycle through test definitions and evaluate
-        tests.each{ ArrayList t ->
+        tests.eachWithIndex{ ArrayList t, idx ->
             // [0] > com.google.gson.internal.LinkedTreeMap
             // [1] > could be a String, could be an object
 
@@ -76,7 +77,7 @@ public class TestUtilities {
                 FileInputStream expValStream = new FileInputStream(getInputFile(expectedPath))
                 expectedValue = gson.fromJson(new InputStreamReader(expValStream, StandardCharsets.UTF_8), HashMap.class)
             }
-            cb(processedEntity, expectedValue)
+            cb(processedEntity, expectedValue, idx)
         }
     }
 
@@ -89,21 +90,60 @@ public class TestUtilities {
         return new OutputStreamWriter(debug, StandardCharsets.UTF_8)
     }
 
-    // write to log, for debug purposes - entire string
-    public static void dumpToDebug(String[] debugTo, Closure cb)
+    public static String formattedTimestamp()
     {
-        def fw = createDebugWriter(debugTo)
+        Date act = new Date()
+        return act.format("yyMMdd_HHmmss")
+    }
+
+    public static String insertTimestampToFilename(String filename)
+    {
+        def ts = formattedTimestamp()
+        return insertBeforeExtension(filename, ts)
+    }
+
+    // insert string just before where file extension begins
+    public static String insertBeforeExtension(String fileName, String insert)
+    {
+        def recFileAndExt = Pattern.compile("^(.+)\\.(\\w{3,4})")
+        def m = recFileAndExt.matcher(fileName)
+        if (!m.matches()) return fileName
+
+        def origFile = m.group(1)
+        def origExt = m.group(2)
+
+
+        return "${origFile}_${insert}.${origExt}".toString()
+    }
+
+    // write to log, for debug purposes - entire string
+    public static void dumpToDebug(String[] debugPath, Closure cb)
+    {
+        def fw = createDebugWriter(debugPath)
         fw.write(cb() as String)
         fw.close();
     }
 
     // write to log - with per-line command
-    public static void dumpToDebugPerLine(String[] debugTo, Closure cb)
+    public static void dumpToDebugUsingWriter(String[] debugPath, boolean appendTimeStamp, Closure cb)
     {
-        def fw = createDebugWriter(debugTo)
+        // modify string
+        if (appendTimeStamp)
+        {
+            def newPath = debugPath
+            def filename = insertTimestampToFilename(debugPath.last())
+            debugPath[debugPath.length - 1] = filename
+        }
+
+        dumpToDebugUsingWriter(debugPath, cb)
+    }
+
+    public static void dumpToDebugUsingWriter(String[] debugPath, Closure cb)
+    {
+        def fw = createDebugWriter(debugPath)
 
         // attempt to write using closure
-        fw.withWriter {cb}
+        cb(fw)
 
         fw.close();
     }

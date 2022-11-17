@@ -73,6 +73,10 @@ class ConditionHandler {
         def condVal = cond.value
 
         switch (cond.operator){
+            case EntityCondition.ComparisonOperator.IS_NULL:
+                return val == null
+            case EntityCondition.ComparisonOperator.IS_NOT_NULL:
+                return val != null
             case EntityCondition.ComparisonOperator.EQUALS:
                 return val == condVal
             case EntityCondition.ComparisonOperator.NOT_EQUAL:
@@ -89,6 +93,20 @@ class ConditionHandler {
             case EntityCondition.ComparisonOperator.LESS_THAN_EQUAL_TO:
 //                if (!val.toString().isNumber() || !condVal.toString().isNumber()) throw new EntityException("Both artifacts must be numeric when using 'LTE' operator")
                 return val <= condVal
+            case EntityCondition.ComparisonOperator.BETWEEN:
+                if (!val) return false
+                if (!isArray(condVal)) throw new EntityException("Comparison value is not of type Array when using 'BETWEEN' operator")
+                ArrayList condArr = (ArrayList) condVal
+                if (condArr.size() != 2) throw new EntityException("Two comparison values required for 'BETWEEN' operator check")
+                if (condArr[0] > condArr[1]) throw new EntityException("Comparison values for 'BETWEEN' check need to be in ascending order")
+                return condArr[0] <= val && val <= condArr[1]
+            case EntityCondition.ComparisonOperator.NOT_BETWEEN:
+                if (!val) return false
+                if (!isArray(condVal)) throw new EntityException("Comparison value is not of type Array when using 'NOT-BETWEEN' operator")
+                ArrayList condArr = (ArrayList) condVal
+                if (condArr.size() != 2) throw new EntityException("Two comparison values required for 'NOT-BETWEEN' operator check")
+                if (condArr[0] > condArr[1]) throw new EntityException("Comparison values for 'NOT-BETWEEN' check need to be in ascending order")
+                return condArr[0] > val && val > condArr[1]
             case EntityCondition.ComparisonOperator.IN:
                 if (!val) return false
                 if (!isArray(condVal)) throw new EntityException("Comparison value is not of type Array when using 'IN' operator")

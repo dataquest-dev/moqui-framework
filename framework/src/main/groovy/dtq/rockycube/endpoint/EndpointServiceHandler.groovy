@@ -635,7 +635,7 @@ class EndpointServiceHandler {
             }
 
             // if tool is not ready, throw exception, we expect it works
-            if (!syncMaster) throw new EndpointException("Unable to perform cache-based data loading, not cache handler")
+            if (!syncMaster) throw new EndpointException("Unable to perform cache-based data loading, no cache handler")
 
             return this.fetchCachedData(syncMaster)
         }

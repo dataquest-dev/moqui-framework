@@ -58,6 +58,12 @@ class ViUtilities {
         return null
     }
 
+    public static String formattedTimestamp()
+    {
+        def date = new Date()
+        return date.format("yyMMdd_HHmmss")
+    }
+
     public static boolean isAlphaNumeric(String s){
         String pattern= '^[a-zA-Z0-9]*$'
         return s.matches(pattern);

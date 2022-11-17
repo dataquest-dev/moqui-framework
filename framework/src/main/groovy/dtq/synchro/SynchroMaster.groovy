@@ -135,7 +135,7 @@ class SynchroMaster {
         //  only add those fields that are in entity definition
         def fields = ed.nonPkFieldNames
         fields.add(ed.pkFieldNames[0])
-        def itemsToUpload = ecf.entity.find(entityName).selectFields(fields).list()
+        def itemsToUpload = ecf.entity.find(entityName).disableAuthz().selectFields(fields).list()
         for (def i in itemsToUpload)
         {
             cache.put(i.get(ed.pkFieldNames[0]), i)

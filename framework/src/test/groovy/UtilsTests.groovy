@@ -1,4 +1,5 @@
 import org.moqui.impl.ViUtilities
+import org.moqui.util.TestUtilities
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import spock.lang.Specification
@@ -35,5 +36,15 @@ class UtilsTests extends Specification {
         1 == 1
     }
 
+    def test_file_w_ts(){
+        when:
+
+        def ts = TestUtilities.formattedTimestamp()
+
+        assert TestUtilities.insertBeforeExtension("test.json", ts) == "test_${ts}.json".toString()
+
+        then:
+        1 == 1
+    }
 
 }

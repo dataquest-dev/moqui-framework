@@ -40,7 +40,7 @@ class EndpointTests extends Specification {
 
         TestUtilities.testSingleFile(
                 TestUtilities.extendList([testDir, "expected_complex_queries.json"] as String[]),
-                { Object processed, Object expected ->
+                { Object processed, Object expected, Integer idx ->
 
                     def entity = processed[0]
                     def term = processed[1]
@@ -96,7 +96,7 @@ class EndpointTests extends Specification {
 
         TestUtilities.testSingleFile(
                 TestUtilities.extendList([testDir, "expected_flatmapping.json"] as String[]),
-                { Object processed, Object expected ->
+                { Object processed, Object expected, Integer idx ->
 
                     // extract path from object processed
                     String file = processed

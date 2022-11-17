@@ -1,8 +1,8 @@
 import com.google.gson.Gson
 import dtq.synchro.SynchroMaster
+import groovy.time.TimeCategory
 import org.moqui.Moqui
 import org.moqui.entity.EntityCondition
-import org.moqui.entity.EntityException
 import org.moqui.impl.entity.EntityFacadeImpl
 import org.moqui.util.TestUtilities
 import org.moqui.context.ExecutionContext
@@ -10,8 +10,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import spock.lang.Shared
 import spock.lang.Specification
-
-import java.nio.charset.StandardCharsets
 
 class CachedEndpointTests extends Specification {
     protected final static Logger logger = LoggerFactory.getLogger(CachedEndpointTests.class)
@@ -57,7 +55,7 @@ class CachedEndpointTests extends Specification {
         def testCache = tool.getEntityCache(entityName)
         tool.disableSynchronization(entityName)
 
-        def imported = this.importTestData(entityName)
+        def imported = this.importTestData(entityName, "import-batch.csv")
         def cntAfterImport = ec.entity.find(entityName).count()
         assert imported == tool.getMissedSyncCounter(entityName)
         assert testCache.size() + imported == cntAfterImport
@@ -69,7 +67,7 @@ class CachedEndpointTests extends Specification {
         // 3. perform few queries with different conditions set
         TestUtilities.testSingleFile(
                 ["CacheRelatedTests", "expected_cache_queries.json"] as String[],
-                { Object processed, Object expected ->
+                { Object processed, Object expected, Integer idx ->
                     def ntt = processed[0]
                     def term = processed[1]
                     def args = processed[2]
@@ -135,15 +133,18 @@ class CachedEndpointTests extends Specification {
 
         // 0. erase before
         def condCreated = ec.entity.conditionFactory.makeCondition("testMedium", EntityCondition.ComparisonOperator.LIKE, "proj_%")
-        ec.entity.find(entityName).condition(condCreated).deleteAll()
+        def deletedFirst = ec.entity.find(entityName).condition(condCreated).deleteAll()
 
         // 1. load data into entity
-        def imported = this.importTestData(entityName)
+        def imported = this.importTestData(entityName, "import-batch-bigger.csv")
+
+        // store durations for later debug use
+        ArrayList timeDurations = new ArrayList()
 
         // 2. perform queries with different conditions set
         TestUtilities.testSingleFile(
                 ["CacheRelatedTests", "expected_query_comparison.json"] as String[],
-                { Object processed, Object expected ->
+                { Object processed, Object expected, Integer idx ->
                     def ntt = (String) processed[0]
                     def term = (ArrayList) processed[1]
                     def args = (HashMap) processed[2]
@@ -161,17 +162,32 @@ class CachedEndpointTests extends Specification {
                     argsCache.put("allowICacheQuery", true)
 
                     // 1.
-                    def resCache = this.executeDataLoad(srvName, ntt, term, argsCache, pageIndex)
-                    def resStandard = this.executeDataLoad(srvName, ntt, term, args, pageIndex)
+                    def resStandard = this.executeDataLoad(srvName, ntt, term, args, pageIndex, 150)
+                    def resCache = this.executeDataLoad(srvName, ntt, term, argsCache, pageIndex, 150)
+
+                    // store duration info
+                    timeDurations.add("test ${idx} [cache: ${resCache.duration}] [standard: ${resStandard.duration}]")
 
                     // no exceptions expected
                     assert ec.message.errors.isEmpty()
 
                     // expected value can be a list, as well as a primitive
-                    assert expected == resCache.data
-                    assert expected == resStandard.data
+                    if (expected)
+                    {
+                        assert expected == resCache.data
+                        assert expected == resStandard.data
+                    }
                 }
         )
+
+        // log statistics to file
+        TestUtilities.dumpToDebugUsingWriter((String[])["__temp", "stats.log"], true, { Writer wr->
+            wr.withWriter {it->
+                timeDurations.each {td->
+                    it.println(td)
+                }
+            }
+        })
 
         // 4. delete at the end
         def deleted = ec.entity.find(entityName).condition(condCreated).deleteAll()
@@ -180,17 +196,22 @@ class CachedEndpointTests extends Specification {
         deleted == imported
     }
 
-    private HashMap executeDataLoad(String srvName, String entityName, ArrayList term, HashMap args, Long pageIndex)
+    private HashMap executeDataLoad(String srvName, String entityName, ArrayList term, HashMap args, Long pageIndex, int pageSize)
     {
+        def timeStart = new Date()
         def reportData = ec.service.sync().name(srvName).parameters([
                 entityName: entityName,
                 term      : term,
                 args      : args,
-                index     : pageIndex
+                index     : pageIndex,
+                size      : pageSize
         ]).call() as HashMap
 
+        def timeStop = new Date()
+        def duration = TimeCategory.minus(timeStop, timeStart)
+
         def res = [
-                duration: 1,
+                duration: duration,
                 data: reportData.data
         ]
     }
@@ -198,24 +219,37 @@ class CachedEndpointTests extends Specification {
 
     // load into TestEntity from a CSV file
     // why CSV? CSV can be processed more easily hand-generated than JSON
-    private Long importTestData(String entityName)
+    private Long importTestData(String entityName, String fileName)
     {
         Long created = 0
+        def idList = []
 
-        TestUtilities.readFileLines(["CacheRelatedTests", "import-batch.csv"] as String[], ";", { String[] values ->
-//            logger.info("Values: ${values.join("+")}")
+        TestUtilities.readFileLines(["CacheRelatedTests", fileName] as String[], ";", { String[] values ->
+            // logger.info("Values: ${values.join("+")}")
+            def idUsed = values[0]
+            if (idList.contains(idUsed))
+            {
+                logger.warn("ID already used: [${idUsed}]")
+            } else {
+                idList.push(idUsed)
 
-            // use entity model to create values
-            def newNtt = ec.entity.makeValue(entityName).setAll([
-                    testMedium:values[0],
-                    testNumberInteger:values[1].toInteger(),
-                    testNumberDecimal:values[2].toDouble(),
-                    testNumberFloat:values[3].toFloat()
-            ])
-                    .setSequencedIdPrimary().create()
+                // use entity model to create values
+                def newNtt = null
+                try {
+                    newNtt = ec.entity.makeValue(entityName).setAll([
+                            testMedium:values[0],
+                            testNumberInteger:values[1].toInteger(),
+                            testNumberDecimal:values[2].toDouble(),
+                            testNumberFloat:values[3].toFloat()
+                    ])
+                            .setSequencedIdPrimary().create()
+                } catch (Exception exc) {
+                    logger.error("Error while generating test data: ${exc.message}")
+                }
 
-            // increment counter
-            if (newNtt) created += 1
+                // increment counter, only if new record
+                if (newNtt) created += 1
+            }
         })
 
         return created
