@@ -38,7 +38,8 @@ class SynchroMaster {
         // process each item in configuration list
         cachesSetup.each {it->
             def sourceEntity = it
-            def cacheName = this.startSynchronization(sourceEntity)
+            EntityDefinition ed = efi.getEntityDefinition(sourceEntity)
+            def cacheName = this.startSynchronization(ed)
 
             // add cache name to list
             this.syncedCaches.add(cacheName)
@@ -54,7 +55,7 @@ class SynchroMaster {
             }
 
             // create manually an EECA rule for handling events on entity
-            efi.addNewEecaRule(sourceEntity, createCrudRule(sourceEntity))
+            efi.addNewEecaRule(sourceEntity, createCrudRule(ed))
         }
     }
 
@@ -88,8 +89,9 @@ class SynchroMaster {
         return this.semaphores[entityName]
     }
 
-    public boolean disableSynchronization(String entityName)
+    public boolean disableSynchronization(EntityDefinition ed)
     {
+        String entityName = ed.fullEntityName
         if (!this.semaphores.containsKey(entityName)) throw new SynchroException("Entity not being supervised")
         if (!this.getIsSynced(entityName)) {
             logger.warn("Missed syncs present, please check")
@@ -104,8 +106,9 @@ class SynchroMaster {
         return true
     }
 
-    public boolean enableSynchronization(String entityName)
+    public boolean enableSynchronization(EntityDefinition ed)
     {
+        String entityName = ed.fullEntityName
         if (!this.semaphores.containsKey(entityName)) throw new SynchroException("Entity not being supervised")
         if (this.getIsSynced(entityName))
         {
@@ -114,15 +117,15 @@ class SynchroMaster {
         }
 
         // reload cache
-        return this.startSynchronization(entityName) != ""
+        return this.startSynchronization(ed) != ""
     }
 
     // initialize cache and upload data from database table
-    private String startSynchronization(String entityName)
+    private String startSynchronization(EntityDefinition ed)
     {
+        String entityName = ed.fullEntityName
         def cacheName = getCacheName(entityName)
         def cache = ecf.executionContext.cache.getCache(cacheName)
-        def ed = efi.getEntityDefinition(entityName)
         if (!checkEntityKeys(ed)) return
 
         // reset cache
@@ -135,7 +138,11 @@ class SynchroMaster {
         //  only add those fields that are in entity definition
         def fields = ed.nonPkFieldNames
         fields.add(ed.pkFieldNames[0])
-        def itemsToUpload = ecf.entity.find(entityName).disableAuthz().selectFields(fields).list()
+        def itemsToUpload = ecf.entity.find(entityName)
+                .disableAuthz()
+                .selectFields(fields)
+                .limit(5000)
+                .list()
         for (def i in itemsToUpload)
         {
             cache.put(i.get(ed.pkFieldNames[0]), i)
@@ -145,7 +152,9 @@ class SynchroMaster {
         return cacheName
     }
 
-    private EntityEcaRule createCrudRule(String entityName){
+    private EntityEcaRule createCrudRule(EntityDefinition ed){
+        String entityName = ed.fullEntityName
+
         // create new MNode
         HashMap<String, String> eecaAttrs = [:]
         eecaAttrs.put("entity", entityName)
@@ -155,13 +164,18 @@ class SynchroMaster {
         eecaAttrs.put("run-on-error", "true")
         MNode eecaRuleNode = new MNode("eeca", eecaAttrs)
 
+        String pk = ed.pkFieldNames[0]
+
         // create new EECA rule for entity
         def scriptNode = new MNode("script", [:], null, null, """
                     def tool = ec.getTool("SynchroMaster", dtq.synchro.SynchroMaster.class)
-                    tool.reactToChange(eecaOperation, "${entityName}", testId)
+                    tool.reactToChange(eecaOperation, "${entityName}", entityValue.${pk})
                 """)
         def actionNode = eecaRuleNode.append("actions", [:])
         actionNode.append(scriptNode)
+
+        logger.debug("Creating CRUD EECA rule for ${entityName}")
+        // logger.debug("Script: ${scriptNode}")
 
         return new EntityEcaRule((ExecutionContextFactoryImpl) this.ecf, eecaRuleNode, "")
     }
@@ -205,7 +219,9 @@ class SynchroMaster {
             switch (operationType){
                 case "create":
                 case "update":
+                    def flds = ed.getFieldNames(false, true)
                     def newItem = ecf.executionContext.entity.find(entityName)
+                            .selectFields(flds)
                             .condition(pk, recordId)
                             .one()
                     if (operationType == "create") {ch.put(newItem.get(pk), newItem)}

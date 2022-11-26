@@ -44,6 +44,7 @@ class CachedEndpointTests extends Specification {
 
         def entityName = "moqui.test.TestEntity"
         def cntBeforeImport = ec.entity.find(entityName).count()
+        def ed = efi.getEntityDefinition(entityName)
 
         // 0. erase before
         def condCreated = ec.entity.conditionFactory.makeCondition("testMedium", EntityCondition.ComparisonOperator.LIKE, "proj_%")
@@ -53,7 +54,7 @@ class CachedEndpointTests extends Specification {
         // disable auto cache-refresh SynchroMaster before importing
         def tool = ec.getTool("SynchroMaster", SynchroMaster.class)
         def testCache = tool.getEntityCache(entityName)
-        tool.disableSynchronization(entityName)
+        tool.disableSynchronization(ed)
 
         def imported = this.importTestData(entityName, "import-batch.csv")
         def cntAfterImport = ec.entity.find(entityName).count()
@@ -61,7 +62,7 @@ class CachedEndpointTests extends Specification {
         assert testCache.size() + imported == cntAfterImport
 
         // 2. synchronize
-        tool.enableSynchronization(entityName)
+        tool.enableSynchronization(ed)
         assert testCache.size() == cntAfterImport
 
         // 3. perform few queries with different conditions set
@@ -106,7 +107,7 @@ class CachedEndpointTests extends Specification {
         )
 
         // 4. delete at the end
-        tool.disableSynchronization(entityName)
+        tool.disableSynchronization(ed)
         def deleted = ec.entity.find(entityName).condition(condCreated).deleteAll()
         def cntAfterDelete = ec.entity.find(entityName).count()
 
@@ -115,7 +116,7 @@ class CachedEndpointTests extends Specification {
         assert tool.getMissedSyncCounter(entityName) == deleted
 
         // check sizes after sync being back online
-        tool.enableSynchronization(entityName)
+        tool.enableSynchronization(ed)
         assert testCache.size() == cntAfterDelete
 
         then:
