@@ -51,7 +51,11 @@ class JsonSupportTests extends Specification {
 
         def valueTested = [
                 value: 1981,
-                theOtherList: [1, 2, 3]
+                theOtherList: [1, 2, 3],
+                currentBudget: [
+                        [month: "09.2022", amount: 1500],
+                        [month: "09.2022", amount: 2500]
+                ]
         ]
 
         // create new entity
