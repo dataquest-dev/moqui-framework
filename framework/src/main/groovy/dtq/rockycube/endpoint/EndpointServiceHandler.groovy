@@ -37,6 +37,7 @@ class EndpointServiceHandler {
     private ExecutionContextFactoryImpl ecfi
     private EntityHelper meh
     private EntityCondition.JoinOperator defaultListJoinOper = EntityCondition.JoinOperator.OR
+    private Gson gson
 
     private static String CONST_UPDATE_IF_EXISTS                = 'updateIfExists'
     private static String CONST_ALLOWED_FIELDS                  = 'allowedFields'
@@ -80,6 +81,7 @@ class EndpointServiceHandler {
         this.ec = Moqui.getExecutionContext()
         this.ecfi = (ExecutionContextFactoryImpl) Moqui.getExecutionContextFactory()
         this.meh = new EntityHelper(this.ec)
+        this.gson = new Gson()
 
         // do we have an entity?
         // try extracting from table name
@@ -147,7 +149,6 @@ class EndpointServiceHandler {
 
     private Object fillResultset(EntityValue single)
     {
-        Gson gson = new Gson()
         HashMap<String, Object> res = [:]
         HashMap<String, Object> recordMap = [:]
         // logger.info("args.allowedFields: ${args[CONST_ALLOWED_FIELDS]}")
@@ -169,21 +170,8 @@ class EndpointServiceHandler {
             def itVal = it.value
 
             // special treatment for maps
-            // convert HashMap
-            if (it.isMapField())
-            {
-                def itValCls = it.value.getClass().simpleName.toLowerCase()
-                switch (itValCls)
-                {
-                    case "byte[]":
-                        def itStrVal = new String((byte[]) it.value, StandardCharsets.UTF_8)
-                        itVal = gson.fromJson(itStrVal, HashMap.class)
-                        break
-                    default:
-                        itVal = gson.fromJson(itVal.toString(), HashMap.class)
-                }
-            }
-
+            // convert HashMap, watch out if it's array
+            if (it.isMapField()) itVal = this.processField(it.value)
             recordMap.put(fieldName, itVal)
         }
 
@@ -215,15 +203,32 @@ class EndpointServiceHandler {
 
     private Object fillResultset(EntityList entities) {
         // return as array by default, only when set otherwise
-        if (entities.size() == 1 && args[CONST_PREFER_OBJECT_IN_RETURN])
-        {
-            return fillResultset(entities[0])
-        }
+        if (entities.size() == 1 && args[CONST_PREFER_OBJECT_IN_RETURN]) return fillResultset(entities[0])
 
         // otherwise return as an array
         def res = []
-        for (EntityValue ev in entities) {
-            res.add(fillResultset(ev))
+        for (EntityValue ev in entities) res.add(fillResultset(ev))
+        return res
+    }
+
+    private Object processField(Object field)
+    {
+        def res
+        def fieldClass = field.getClass().simpleName.toLowerCase()
+        switch (fieldClass)
+        {
+            case "byte[]":
+                String itStrVal = new String((byte[]) field, StandardCharsets.UTF_8)
+                def firstChar = itStrVal.substring(0,1)
+                if (firstChar == "[")
+                {
+                    res = gson.fromJson(itStrVal, ArrayList.class)
+                } else {
+                    res = gson.fromJson(itStrVal, HashMap.class)
+                }
+                break
+            default:
+                res = gson.fromJson(field.toString(), HashMap.class)
         }
         return res
     }
@@ -591,7 +596,7 @@ class EndpointServiceHandler {
         if (this.inputIndex > 1) throw new EndpointException("Pagination not supported for i-cache queries")
 
         // 3. fields must be explicitly set
-        if (args[CONST_ALLOWED_FIELDS] == "*") throw new EndpointException("Fields to retrieve must be explicitly set")
+        if (args[CONST_ALLOWED_FIELDS] == "*") throw new EndpointException("Fields to retrieve must be explicitly set when reaching to cache")
         if (!args[CONST_ALLOWED_FIELDS] instanceof List) throw new EndpointException("Fields to retrieve must be set as list")
 
         // populate using query handler
@@ -611,7 +616,15 @@ class EndpointServiceHandler {
             def fullEntity = (HashMap) cacheUsed.get(it)
             def resMap = [:]
             fields.each {f->
-                resMap.put(f, fullEntity.get(f))
+                def fieldValue = fullEntity.get(f)
+                def fieldClass = fieldValue.getClass().simpleName
+
+                //logger.debug("Field [${f}][${fieldClass}]: [${fieldValue}]")
+
+                // byte's - that shall be a JSON
+                if (fieldClass == "byte[]") fieldValue = this.processField(fieldValue)
+
+                resMap.put(f, fieldValue)
             }
             res.add(resMap)
         }
