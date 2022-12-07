@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory
 import spock.lang.Specification
 
 import java.time.LocalDate
+import java.util.regex.Pattern
 
 class UtilsTests extends Specification {
     protected final static Logger logger = LoggerFactory.getLogger(UtilsTests.class)
@@ -47,4 +48,28 @@ class UtilsTests extends Specification {
         1 == 1
     }
 
+    // method used for filtering args coming from PY-CALC
+    def test_args_filtering(){
+        when:
+            def args = [
+            "periodSince": "01.2021",
+            "periodThru": "03.2022",
+            "cumulative": true,
+            "dateColumn": "date",
+            "parsingFormat": "%Y.%m",
+            "pycalc_multiSeriesCategory": "type",
+            "pycalc_removeZeros": true
+        ]
+
+        def expectedCleaned = [
+                "multiSeriesCategory": "type",
+                "removeZeros": true
+        ]
+
+        // cleanup
+        def cleaned = ViUtilities.extractPycalcArgs(args)
+
+        then:
+        cleaned == expectedCleaned
+    }
 }

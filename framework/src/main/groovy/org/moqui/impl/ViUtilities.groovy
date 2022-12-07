@@ -30,6 +30,19 @@ import java.util.regex.Pattern
  * stupid but necessary for certain things.
  */
 class ViUtilities {
+    static final HashMap extractPycalcArgs(HashMap argsMap)
+    {
+        def recPycalc = Pattern.compile("^(?:pycalc)_?(.*)")
+        def cleaned = [:]
+        argsMap.each {it->
+            def m = recPycalc.matcher(it.key)
+            if (!m.matches()) return
+            cleaned[m.group(1)] = it.value
+        }
+        return cleaned
+    }
+
+
     static final String removeNonumericCharacters(String inputValue) {
         return inputValue.replaceAll("[^\\d]", "")
     }
