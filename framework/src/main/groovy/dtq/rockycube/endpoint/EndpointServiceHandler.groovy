@@ -241,11 +241,15 @@ class EndpointServiceHandler {
         {
             return args[CONST_ALLOW_TIMESTAMPS]
         }
+        return fieldAllowed(args[CONST_ALLOWED_FIELDS], fieldName)
+    }
 
-        switch(args[CONST_ALLOWED_FIELDS].getClass().simpleName)
+    private boolean fieldAllowed(Object filter, String fieldName)
+    {
+        switch(filter.getClass().simpleName)
         {
             case 'String':
-                def afld = (String) args[CONST_ALLOWED_FIELDS]
+                def afld = (String) filter
                 if (afld == '*') {
                     return true
                 } else if (afld == fieldName) {
@@ -253,7 +257,7 @@ class EndpointServiceHandler {
                 }
                 break
             case 'ArrayList':
-                def aflds = (ArrayList) args[CONST_ALLOWED_FIELDS]
+                def aflds = (ArrayList) filter
                 if (aflds.size() == 1 && aflds[0] == "*")
                 {
                     return true
@@ -279,7 +283,6 @@ class EndpointServiceHandler {
             default:
                 return false
         }
-        return false
     }
 
     private void calculateDependencies()
@@ -587,10 +590,8 @@ class EndpointServiceHandler {
         // is the cache synced?
         if (!syncMaster.getIsSynced(this.entityName)) throw new EndpointException("Entity is not synchronized, cannot proceed")
 
-        // THESE MAY BE SUBJECT TO CHANGE
-        // features not supported
-        // 1. complex queries
-        if (args[CONST_COMPLEX_CONDITION_RULE]) throw new EndpointException("Complex queries not supported for i-cache")
+        // 1. complex queries - now supported
+        // if (args[CONST_COMPLEX_CONDITION_RULE]) throw new EndpointException("Complex queries not supported for i-cache")
 
         // 2. pagination not supported
         if (this.inputIndex > 1) throw new EndpointException("Pagination not supported for i-cache queries")
@@ -607,25 +608,35 @@ class EndpointServiceHandler {
         )
 
         // IDs returned
-        def resIds = qh.fetch(this.defaultListJoinOper, term)
+        def resIds = qh.fetch(queryCondition)
 
         // now it's time to populate result
         def res = new ArrayList()
-        def fields = (ArrayList<String>) args[CONST_ALLOWED_FIELDS]
+        def fields = args[CONST_ALLOWED_FIELDS]
         resIds.each {it->
             def fullEntity = (HashMap) cacheUsed.get(it)
             def resMap = [:]
-            fields.each {f->
-                def fieldValue = fullEntity.get(f)
-                def fieldClass = fieldValue.getClass().simpleName
+            fullEntity.each {key, value ->
+                if (!this.fieldAllowed(fields, key)) return
 
+                def fieldClass = value.getClass().simpleName
                 //logger.debug("Field [${f}][${fieldClass}]: [${fieldValue}]")
-
                 // byte's - that shall be a JSON
-                if (fieldClass == "byte[]") fieldValue = this.processField(fieldValue)
-
-                resMap.put(f, fieldValue)
+                if (fieldClass == "byte[]") value = this.processField(value)
+                resMap.put(key, value)
             }
+
+//            fields.each {f->
+//                def fieldValue = fullEntity.get(f)
+//                def fieldClass = fieldValue.getClass().simpleName
+//
+//                //logger.debug("Field [${f}][${fieldClass}]: [${fieldValue}]")
+//
+//                // byte's - that shall be a JSON
+//                if (fieldClass == "byte[]") fieldValue = this.processField(fieldValue)
+//
+//                resMap.put(f, fieldValue)
+//            }
             res.add(resMap)
         }
 
