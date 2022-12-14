@@ -18,6 +18,7 @@ import org.moqui.impl.ViUtilities
 import org.moqui.impl.context.ExecutionContextFactoryImpl
 import org.moqui.impl.entity.EntityDefinition
 import org.moqui.impl.entity.EntityFacadeImpl
+import org.moqui.impl.entity.FieldInfo
 import org.moqui.impl.entity.condition.ConditionField
 import org.moqui.impl.entity.condition.EntityConditionImplBase
 import org.moqui.impl.entity.condition.FieldValueCondition
@@ -153,7 +154,24 @@ class EndpointServiceHandler {
         HashMap<String, Object> recordMap = [:]
         // logger.info("args.allowedFields: ${args[CONST_ALLOWED_FIELDS]}")
 
+        FieldInfo pkInfo = null
+        if (ed.pkFieldNames.size() == 1) pkInfo = ed.getFieldInfo(ed.pkFieldNames[0])
+
         single.entrySet().each { it->
+            // check primary field
+            // in case the column is different to fieldName
+            // and we do not `renameId`, store it as a field name
+            if (pkInfo)
+            {
+                if (pkInfo.columnName != pkInfo.name && args.getOrDefault('renameId', null) == null)
+                {
+                    if (it.key == pkInfo.columnName){
+                        recordMap.put(pkInfo.name, it.value)
+                        return
+                    }
+                }
+            }
+
             if (!it.key) return
             if (!addField(it.key)) return
             def fieldName = fieldName(it.key)
@@ -611,12 +629,29 @@ class EndpointServiceHandler {
         def resIds = qh.fetch(queryCondition)
 
         // now it's time to populate result
+        FieldInfo pkInfo = null
+        if (ed.pkFieldNames.size() == 1) pkInfo = ed.getFieldInfo(ed.pkFieldNames[0])
         def res = new ArrayList()
         def fields = args[CONST_ALLOWED_FIELDS]
         resIds.each {it->
             def fullEntity = (HashMap) cacheUsed.get(it)
             def resMap = [:]
             fullEntity.each {key, value ->
+                // check primary field
+                // in case the column is different to fieldName
+                // and we do not `renameId`, store it as a field name
+                if (pkInfo)
+                {
+                    if (pkInfo.columnName != pkInfo.name && args.getOrDefault('renameId', null) == null)
+                    {
+                        if (key == pkInfo.columnName){
+                            resMap.put(pkInfo.name, value)
+                            return
+                        }
+                    }
+                }
+
+                // standard checks
                 if (!this.fieldAllowed(fields, key)) return
 
                 def fieldClass = value.getClass().simpleName
@@ -625,18 +660,6 @@ class EndpointServiceHandler {
                 if (fieldClass == "byte[]") value = this.processField(value)
                 resMap.put(key, value)
             }
-
-//            fields.each {f->
-//                def fieldValue = fullEntity.get(f)
-//                def fieldClass = fieldValue.getClass().simpleName
-//
-//                //logger.debug("Field [${f}][${fieldClass}]: [${fieldValue}]")
-//
-//                // byte's - that shall be a JSON
-//                if (fieldClass == "byte[]") fieldValue = this.processField(fieldValue)
-//
-//                resMap.put(f, fieldValue)
-//            }
             res.add(resMap)
         }
 
