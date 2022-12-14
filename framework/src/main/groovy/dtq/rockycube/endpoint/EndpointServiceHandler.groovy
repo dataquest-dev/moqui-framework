@@ -148,6 +148,32 @@ class EndpointServiceHandler {
         }
     }
 
+    private boolean checkIdentityColumn(
+            HashMap recordMap,
+            FieldInfo pkInfo,
+            String fieldName,
+            Object fieldValue)
+    {
+        if (!pkInfo) return false
+
+        // not a case if column-name and table-column-name are equal
+        if (pkInfo.columnName == pkInfo.name) return false
+
+        // if we shall do ID-renaming later, do not perform this check
+        def shouldRenameId = args.getOrDefault('renameId', null) != null
+        if (shouldRenameId) return false
+
+        if (fieldName == pkInfo.columnName){
+            // still may be a situation where the ID is forbidden
+            def allowField = addField(pkInfo.name)
+            if (allowField) recordMap.put(pkInfo.name, fieldValue)
+            // no need to repeat
+            return true
+        }
+
+        return false
+    }
+
     private Object fillResultset(EntityValue single)
     {
         HashMap<String, Object> res = [:]
@@ -161,16 +187,7 @@ class EndpointServiceHandler {
             // check primary field
             // in case the column is different to fieldName
             // and we do not `renameId`, store it as a field name
-            if (pkInfo)
-            {
-                if (pkInfo.columnName != pkInfo.name && args.getOrDefault('renameId', null) == null)
-                {
-                    if (it.key == pkInfo.columnName){
-                        recordMap.put(pkInfo.name, it.value)
-                        return
-                    }
-                }
-            }
+            if (checkIdentityColumn(recordMap, pkInfo, it.key, it.value)) return
 
             if (!it.key) return
             if (!addField(it.key)) return
@@ -640,16 +657,7 @@ class EndpointServiceHandler {
                 // check primary field
                 // in case the column is different to fieldName
                 // and we do not `renameId`, store it as a field name
-                if (pkInfo)
-                {
-                    if (pkInfo.columnName != pkInfo.name && args.getOrDefault('renameId', null) == null)
-                    {
-                        if (key == pkInfo.columnName){
-                            resMap.put(pkInfo.name, value)
-                            return
-                        }
-                    }
-                }
+                if (checkIdentityColumn(resMap, pkInfo, key, value)) return
 
                 // standard checks
                 if (!this.fieldAllowed(fields, key)) return
