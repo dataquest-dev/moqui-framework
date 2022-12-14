@@ -466,7 +466,7 @@ class EndpointServiceHandler {
 
         if (!idValue || !idFieldName)
         {
-            logger.error("Unable to extract ID field or ID field value")
+            logger.warn("Unable to extract ID field or ID field value, probably incorrectly set request arguments")
             return
         }
 
