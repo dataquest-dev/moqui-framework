@@ -272,10 +272,8 @@ class EndpointServiceHandler {
     {
         // allow timestamps? must be explicitly set
         def timestamps = ["lastUpdatedStamp", "creationTime"]
-        if (timestamps.contains(fieldName))
-        {
-            return args[CONST_ALLOW_TIMESTAMPS]
-        }
+        if (timestamps.contains(fieldName)) return args[CONST_ALLOW_TIMESTAMPS]
+        // otherwise use this method
         return fieldAllowed(args[CONST_ALLOWED_FIELDS], fieldName)
     }
 
