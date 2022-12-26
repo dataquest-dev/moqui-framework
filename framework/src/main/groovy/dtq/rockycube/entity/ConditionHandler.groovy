@@ -155,6 +155,7 @@ class ConditionHandler {
                     break
                 case "!=":
                 case "not-equal":
+                case "not-equals":
                     compOperator = EntityCondition.ComparisonOperator.NOT_EQUAL
                     break
                 case ">":
