@@ -201,6 +201,19 @@ class ViUtilities {
         return res
     }
 
+    public static Object parseId(Object val)
+    {
+        if (val.toString().isInteger())
+        {
+            return Integer.parseInt(val.toString())
+        } else if (val.toString().isDouble())
+        {
+            return Double.parseDouble(val.toString())
+        } else {
+            return val
+        }
+    }
+
     /*QUERY HELPERS*/
     static String calcPagedQuery(String query, Integer pageIndex, Integer pageSize)
     {
