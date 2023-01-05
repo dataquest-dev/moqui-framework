@@ -71,7 +71,7 @@ public class TestUtilities {
             // expected value may be a value itself, or a path to JSON file with value
             def processedEntity = t[0]
             def expectedValue = t[1]
-            if (t[1] instanceof String)
+            if (expectedValue instanceof String)
             {
                 String[] expectedPath = extendList(RESOURCE_PATH, t[1] as String)
                 FileInputStream expValStream = new FileInputStream(getInputFile(expectedPath))
