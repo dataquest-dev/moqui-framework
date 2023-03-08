@@ -812,14 +812,15 @@ class EndpointServiceHandler {
 
         def mod = toUpdate.one()
 
-        String datePattern = "yyyy-MM-dd:HH:mm:ss";
+        String datePattern = "yyyy-MM-dd";
+        String dateTimePattern = "yyyy-MM-dd:HH:mm:ss";
         // set new values
         updateData.each {it->
             // If the value a Date type create a Date object from the String value.
             if (ConditionHandler.isValidDate((String) it.value, datePattern)) {
                 // Create a date from the string
-                LocalDate dateTime = GenericUtilities.createDateTimeFromString((String) it.value, datePattern);
-                mod.set((String) it.key, dateTime)
+                Date date = GenericUtilities.createDateFromString((String) it.value, datePattern);
+                mod.set((String) it.key, date)
             } else {
                 mod.set((String) it.key, it.value)
             }

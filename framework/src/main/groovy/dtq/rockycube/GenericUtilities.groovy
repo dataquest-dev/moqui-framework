@@ -7,6 +7,7 @@ import org.moqui.context.ExecutionContext
 import org.moqui.resource.ResourceReference
 
 import java.nio.charset.StandardCharsets
+import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -50,8 +51,7 @@ class GenericUtilities {
         }
     }
 
-    public static LocalDate createDateTimeFromString(String dateStr, String datePattern) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(datePattern);
-        return LocalDate.parse(dateStr, formatter);
+    public static Date createDateFromString(String dateStr, String datePattern) {
+        return new SimpleDateFormat(datePattern).parse(dateStr);
     }
 }
