@@ -29,6 +29,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.nio.charset.StandardCharsets
+import java.time.LocalDate
 import java.util.regex.Pattern
 
 class EndpointServiceHandler {
@@ -811,9 +812,17 @@ class EndpointServiceHandler {
 
         def mod = toUpdate.one()
 
+        String datePattern = "yyyy-MM-dd:HH:mm:ss";
         // set new values
         updateData.each {it->
-            mod.set((String) it.key, it.value)
+            // If the value a Date type create a Date object from the String value.
+            if (ConditionHandler.isValidDate((String) it.value, datePattern)) {
+                // Create a date from the string
+                LocalDate dateTime = GenericUtilities.createDateTimeFromString((String) it.value, datePattern);
+                mod.set((String) it.key, dateTime)
+            } else {
+                mod.set((String) it.key, it.value)
+            }
         }
 
         // save

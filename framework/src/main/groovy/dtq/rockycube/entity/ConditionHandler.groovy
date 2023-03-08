@@ -8,6 +8,9 @@ import org.moqui.impl.entity.condition.EntityConditionImplBase
 import org.moqui.impl.entity.condition.FieldValueCondition
 import org.moqui.impl.entity.condition.ListCondition
 
+import java.text.DateFormat
+import java.text.ParseException
+import java.text.SimpleDateFormat
 import java.util.regex.Pattern
 
 class ConditionHandler {
@@ -235,5 +238,16 @@ class ConditionHandler {
                 compOperator,
                 (Object) singleTerm.value
         )
+    }
+
+    public static boolean isValidDate(String dateStr, String datePattern) {
+        DateFormat sdf = new SimpleDateFormat(datePattern);
+        sdf.setLenient(false);
+        try {
+            sdf.parse(dateStr);
+        } catch (ParseException e) {
+            return false;
+        }
+        return true;
     }
 }

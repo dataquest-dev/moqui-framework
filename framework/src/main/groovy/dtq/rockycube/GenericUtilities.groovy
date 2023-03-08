@@ -7,6 +7,8 @@ import org.moqui.context.ExecutionContext
 import org.moqui.resource.ResourceReference
 
 import java.nio.charset.StandardCharsets
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 class GenericUtilities {
     protected static Gson gson = new Gson()
@@ -46,5 +48,10 @@ class GenericUtilities {
         } else {
             return gson.fromJson(incomingStr, HashMap.class)
         }
+    }
+
+    public static LocalDate createDateTimeFromString(String dateStr, String datePattern) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(datePattern);
+        return LocalDate.parse(dateStr, formatter);
     }
 }
