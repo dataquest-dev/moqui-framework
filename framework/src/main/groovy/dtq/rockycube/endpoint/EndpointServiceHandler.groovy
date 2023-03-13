@@ -614,10 +614,18 @@ class EndpointServiceHandler {
         ]
     }
 
-    public HashMap deleteEntityData()
+    public HashMap deleteEntityData(String id)
     {
-        def toDeleteSearch = ec.entity.find(entityName).condition(queryCondition)
-        logger.debug("DELETE: entityName/term: ${entityName}/${queryCondition}")
+        if (StringUtils.isBlank(id))
+        {
+            return [
+                    result: false,
+                    message: 'Id cannot be null or empty'
+            ]
+        }
+
+        def toDeleteSearch = ec.entity.find(entityName).condition("_id", id)
+        logger.debug("DELETE: entityName/term: ${entityName}/\"_id\" = ${id}")
 
         // convert to list for message
         def toDelete = toDeleteSearch.list()
