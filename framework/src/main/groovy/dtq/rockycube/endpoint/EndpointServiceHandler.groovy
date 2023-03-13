@@ -6,6 +6,7 @@ import dtq.rockycube.entity.ConditionHandler
 import dtq.rockycube.entity.EntityHelper
 import dtq.synchro.SynchroMaster
 import dtq.rockycube.GenericUtilities
+import org.apache.commons.lang3.StringUtils
 import org.moqui.Moqui
 import org.moqui.context.ExecutionContext
 import org.moqui.entity.EntityCondition
@@ -613,10 +614,18 @@ class EndpointServiceHandler {
         ]
     }
 
-    public HashMap deleteEntityData()
+    public HashMap deleteEntityData(String id)
     {
-        def toDeleteSearch = ec.entity.find(entityName).condition(queryCondition)
-        logger.debug("DELETE: entityName/term: ${entityName}/${queryCondition}")
+        if (StringUtils.isBlank(id))
+        {
+            return [
+                    result: false,
+                    message: 'Id cannot be null or empty'
+            ]
+        }
+
+        def toDeleteSearch = ec.entity.find(entityName).condition("_id", id)
+        logger.debug("DELETE: entityName/term: ${entityName}/\"_id\" = ${id}")
 
         // convert to list for message
         def toDelete = toDeleteSearch.list()
@@ -767,8 +776,16 @@ class EndpointServiceHandler {
         return this.fetchEntityData_standard()
     }
 
-    public HashMap updateEntityData(HashMap<String, Object> data)
+    public HashMap updateEntityData(String id, HashMap<String, Object> data)
     {
+        if (StringUtils.isBlank(id))
+        {
+            return [
+                    result: false,
+                    message: 'Id cannot be null or empty'
+            ]
+        }
+
         if (data.isEmpty())
         {
             return [
@@ -778,9 +795,9 @@ class EndpointServiceHandler {
         }
 
         def toUpdate = ec.entity.find(entityName)
-                .condition(queryCondition)
+                .condition("_id", id)
                 .forUpdate(true)
-        logger.debug("UPDATE: entityName/term: ${entityName}/${queryCondition}")
+        logger.debug("UPDATE: entityName/term: ${entityName}/\"_id\" = ${id}")
 
         // update record
         return this.updateSingleEntity(toUpdate, data)
@@ -788,7 +805,7 @@ class EndpointServiceHandler {
 
     public HashMap updateEntityData()
     {
-        return updateEntityData(ec.context.data?:[:] as HashMap<String, Object>)
+        return updateEntityData(ec.context.id as String, ec.context.data?:[:] as HashMap<String, Object>)
     }
 
     private HashMap updateSingleEntity(EntityFind toUpdate, HashMap<String, Object> updateData){

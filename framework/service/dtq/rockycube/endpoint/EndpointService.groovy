@@ -16,7 +16,7 @@ def deleteEntity()
     EndpointServiceHandler ech = new EndpointServiceHandler(args, term, entityName, tableName, failsafe, serviceAllowedOn)
     // ec.logger.debug("Executing deleteEntity method")
     try {
-        return ech.deleteEntityData()
+        return ech.deleteEntityData(id)
     } catch (Exception exc){
         return [result: false, message: "Failed on delete: ${exc.message}"]
     }
@@ -27,7 +27,7 @@ def updateEntity()
 {
     EndpointServiceHandler ech = new EndpointServiceHandler(args, term, entityName, tableName, failsafe, serviceAllowedOn)
     try {
-        return ech.updateEntityData(data)
+        return ech.updateEntityData(id, data)
     } catch (Exception exc){
         return [result: false, message: "Failed on update: ${exc.message}"]
     }

@@ -41,6 +41,7 @@ along with this software (see the LICENSE.md file). If not, see
             type="script"
             location="classpath://service/dtq/rockycube/endpoint/EndpointService.groovy">
         <in-parameters>
+            <parameter name="id" type="String" required="true"/>
             <parameter name="term" type="List" default="[]"/>
             <parameter name="entityName" type="String"/>
             <parameter name="tableName" type="String"/>
@@ -60,6 +61,7 @@ along with this software (see the LICENSE.md file). If not, see
             type="script"
             location="classpath://service/dtq/rockycube/endpoint/EndpointService.groovy">
         <in-parameters>
+            <parameter name="id" type="String" required="true"/>
             <parameter name="term" type="List" default="[]"/>
             <parameter name="entityName" type="String"/>
             <parameter name="tableName" type="String"/>

@@ -245,7 +245,7 @@ class ConditionHandler {
         sdf.setLenient(false);
         try {
             sdf.parse(dateStr);
-        } catch (ParseException e) {
+        } catch (ParseException | NullPointerException e) {
             return false;
         }
         return true;
