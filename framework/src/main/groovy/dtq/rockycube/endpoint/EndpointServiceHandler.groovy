@@ -904,4 +904,15 @@ class EndpointServiceHandler {
 
         return new ByteArrayInputStream(restResponse.bytes());
     }
+
+    /**
+     * Add an error into the actual context. This error will be showed for the end user.
+     *
+     * @param errorCode
+     * @param errorMessage
+     * @param origThrowable previous error
+     */
+    public void addError(Integer errorCode, String errorMessage, Throwable origThrowable) {
+        ec.getWeb().sendJsonError(errorCode, errorMessage, origThrowable);
+    }
 }

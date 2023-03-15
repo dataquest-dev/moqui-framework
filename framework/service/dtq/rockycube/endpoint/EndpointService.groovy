@@ -3,11 +3,11 @@ import dtq.rockycube.endpoint.EndpointServiceHandler
 def loadFromEntity()
 {
     EndpointServiceHandler ech = new EndpointServiceHandler(args, term, entityName, tableName, failsafe, serviceAllowedOn)
-    // ec.logger.debug("Executing loadFromEntity method")
     try {
         return ech.fetchEntityData(index, size, orderBy)
     } catch (Exception exc){
-        return [result: false, message: "Failed on fetch: ${exc.message}"]
+        ech.addError(500, "Failed on fetch: ${exc.message}", null)
+        return null;
     }
 }
 
@@ -18,7 +18,8 @@ def deleteEntity()
     try {
         return ech.deleteEntityData()
     } catch (Exception exc){
-        return [result: false, message: "Failed on delete: ${exc.message}"]
+        ech.addError(500, message: "Failed on delete: ${exc.message}", null)
+        return null;
     }
 
 }
@@ -29,7 +30,8 @@ def updateEntity()
     try {
         return ech.updateEntityData(data)
     } catch (Exception exc){
-        return [result: false, message: "Failed on update: ${exc.message}"]
+        ech.addError(500, message: "Failed on update: ${exc.message}", null)
+        return null;
     }
 }
 
@@ -39,6 +41,7 @@ def createEntity()
     try {
         return ech.createEntityData(data)
     } catch (Exception exc){
-        return [result: false, message: "Failed on create: ${exc.message}"]
+        ech.addError(500, message: "Failed on create: ${exc.message}", null)
+        return null;
     }
 }
