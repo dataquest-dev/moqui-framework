@@ -18,7 +18,7 @@ def deleteEntity()
     try {
         return ech.deleteEntityData()
     } catch (Exception exc){
-        ech.addError(500, message: "Failed on delete: ${exc.message}", null)
+        ech.addError(500, "Failed on delete: ${exc.message}", null)
         return null;
     }
 
@@ -30,7 +30,7 @@ def updateEntity()
     try {
         return ech.updateEntityData(data)
     } catch (Exception exc){
-        ech.addError(500, message: "Failed on update: ${exc.message}", null)
+        ech.addError(500, "Failed on update: ${exc.message}", null)
         return null;
     }
 }
@@ -41,7 +41,7 @@ def createEntity()
     try {
         return ech.createEntityData(data)
     } catch (Exception exc){
-        ech.addError(500, message: "Failed on create: ${exc.message}", null)
+        ech.addError(500, "Failed on create: ${exc.message}", null)
         return null;
     }
 }
