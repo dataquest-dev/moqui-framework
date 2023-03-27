@@ -106,20 +106,20 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
 
     protected LinkedHashMap<String, ComponentInfo> componentInfoMap = new LinkedHashMap<>()
     public final ThreadLocal<ExecutionContextImpl> activeContext = new ThreadLocal<>()
-    protected final Map<Long, ExecutionContextImpl> activeContextMap = new HashMap<>()
+    public final Map<Long, ExecutionContextImpl> activeContextMap = new HashMap<>()
     protected final LinkedHashMap<String, ToolFactory> toolFactoryMap = new LinkedHashMap<>()
 
     protected final Map<String, WebappInfo> webappInfoMap = new HashMap<>()
     protected final List<NotificationMessageListener> registeredNotificationMessageListeners = []
 
     protected final Map<String, ArtifactStatsInfo> artifactStatsInfoByType = new HashMap<>()
-    public final Map<ArtifactType, Boolean> artifactTypeAuthzEnabled = new EnumMap<>(ArtifactType.class)
-    public final Map<ArtifactType, Boolean> artifactTypeTarpitEnabled = new EnumMap<>(ArtifactType.class)
+    public final Map<ArtifactType, Boolean> artifactTypeAuthzEnabled = new EnumMap<ArtifactType, Boolean>(ArtifactType.class)
+    public final Map<ArtifactType, Boolean> artifactTypeTarpitEnabled = new EnumMap<ArtifactType, Boolean>(ArtifactType.class)
 
     protected String skipStatsCond
     protected long hitBinLengthMillis = 900000 // 15 minute default
-    private final EnumMap<ArtifactType, Boolean> artifactPersistHitByTypeEnum = new EnumMap<>(ArtifactType.class)
-    private final EnumMap<ArtifactType, Boolean> artifactPersistBinByTypeEnum = new EnumMap<>(ArtifactType.class)
+    private final EnumMap<ArtifactType, Boolean> artifactPersistHitByTypeEnum = new EnumMap<ArtifactType, Boolean>(ArtifactType.class)
+    private final EnumMap<ArtifactType, Boolean> artifactPersistBinByTypeEnum = new EnumMap<ArtifactType, Boolean>(ArtifactType.class)
     final ConcurrentLinkedQueue<ArtifactHitInfo> deferredHitInfoQueue = new ConcurrentLinkedQueue<ArtifactHitInfo>()
 
     /** The SecurityManager for Apache Shiro */
@@ -452,27 +452,31 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
         BlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<>(workerQueueSize)
 
         int coreSize = (toolsNode.attribute("worker-pool-core") ?: "16") as int
-        int maxSize = (toolsNode.attribute("worker-pool-max") ?: "24") as int
-        int availableProcessorsSize = Runtime.getRuntime().availableProcessors() * 2
+        int maxSize = (toolsNode.attribute("worker-pool-max") ?: "32") as int
+        int availableProcessorsSize = Runtime.getRuntime().availableProcessors() * 3
         if (availableProcessorsSize > maxSize) {
-            logger.info("Setting worker pool size to ${availableProcessorsSize} based on available processors * 2")
+            logger.info("Setting worker pool size to ${availableProcessorsSize} based on available processors * 3")
             maxSize = availableProcessorsSize
         }
         long aliveTime = (toolsNode.attribute("worker-pool-alive") ?: "60") as long
 
         logger.info("Initializing worker ThreadPoolExecutor: queue limit ${workerQueueSize}, pool-core ${coreSize}, pool-max ${maxSize}, pool-alive ${aliveTime}s")
-        return new ContextJavaUtil.WorkerThreadPoolExecutor(this, coreSize, maxSize, aliveTime, TimeUnit.SECONDS, workQueue)
+        return new ContextJavaUtil.WorkerThreadPoolExecutor(this, coreSize, maxSize, aliveTime, TimeUnit.SECONDS,
+                workQueue, new ContextJavaUtil.WorkerThreadFactory())
     }
     boolean waitWorkerPoolEmpty(int retryLimit) {
+        ThreadPoolExecutor jobWorkerPool = serviceFacade.jobWorkerPool
         int count = 0
-        logger.warn("Wait for workerPool empty: queue size ${workerPool.getQueue().size()} active ${workerPool.getActiveCount()}")
-        while (count < retryLimit && (workerPool.getQueue().size() > 0 || workerPool.getActiveCount() > 0)) {
+        while (count < retryLimit && (workerPool.getQueue().size() > 0 || workerPool.getActiveCount() > 0 ||
+                jobWorkerPool.getQueue().size() > 0 || jobWorkerPool.getActiveCount() > 0)) {
+            if (count % 10 == 0) logger.warn("Wait for workerPool and jobWorkerPool empty: worker queue size ${workerPool.getQueue().size()} active ${workerPool.getActiveCount()} max threads ${workerPool.getMaximumPoolSize()}; service job queue size ${jobWorkerPool.getQueue().size()} active ${jobWorkerPool.getActiveCount()}")
             Thread.sleep(100)
             count++
         }
         int afterSize = workerPool.getQueue().size() + workerPool.getActiveCount()
-        if (afterSize > 0) logger.warn("After ${retryLimit} 100ms waits worker pool size is still ${afterSize}")
-        return afterSize == 0
+        int jobAfterSize = jobWorkerPool.getQueue().size() + jobWorkerPool.getActiveCount()
+        if (afterSize > 0 || jobAfterSize > 0) logger.warn("After ${retryLimit} 100ms waits worker pool size is ${afterSize} and service job pool size is ${jobAfterSize}")
+        return afterSize == 0 && jobAfterSize == 0
     }
 
     private CustomScheduledExecutor makeScheduledExecutor() {
@@ -589,12 +593,16 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
         if (confXmlRoot.first("cache-list").attribute("warm-on-start") != "false") warmCache()
 
         // Run init() in ToolFactory implementations from tools.tool-factory elements
-        for (ToolFactory tf in toolFactoryMap.values()) {
+        Iterator<Map.Entry<String, ToolFactory>> tfIterator = toolFactoryMap.entrySet().iterator()
+        while (tfIterator.hasNext()) {
+            Map.Entry<String, ToolFactory> tfEntry = tfIterator.next()
+            ToolFactory tf = tfEntry.getValue()
             logger.info("Initializing ToolFactory: ${tf.getName()}")
             try {
                 tf.init(this)
             } catch (Throwable t) {
                 logger.error("Error initializing ToolFactory ${tf.getName()}", t)
+                tfIterator.remove()
             }
         }
 
@@ -632,8 +640,10 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
         MClassLoader.addCommonClass("org.moqui.entity.EntityList", EntityList.class)
         MClassLoader.addCommonClass("EntityList", EntityList.class)
 
+        logger.info("Initializing MClassLoader context ${Thread.currentThread().getContextClassLoader()?.class?.name} cur class ${this.class.classLoader?.class?.name} system ${System.classLoader?.class?.name}")
         ClassLoader pcl = (Thread.currentThread().getContextClassLoader() ?: this.class.classLoader) ?: System.classLoader
         moquiClassLoader = new MClassLoader(pcl)
+        logger.info("Initialized MClassLoader with parent ${pcl.class.name}")
         // NOTE: initialized here but NOT used as currentThread ClassLoader
         groovyClassLoader = new GroovyClassLoader(moquiClassLoader)
 
@@ -686,7 +696,7 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
         // set as context classloader
         Thread.currentThread().setContextClassLoader(moquiClassLoader)
 
-        logger.info("Initialized ClassLoader in ${System.currentTimeMillis() - startTime}ms")
+        logger.info("Initialized ClassLoaders in ${System.currentTimeMillis() - startTime}ms")
     }
 
     /** Called from MoquiContextListener.contextInitialized after ECFI init */
@@ -778,14 +788,18 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
 
         // shutdown scheduled executor and worker pools
         try {
+            logger.info("Shutting scheduled executor")
             scheduledExecutor.shutdown()
+            logger.info("Shutting down worker pool")
             workerPool.shutdown()
 
             scheduledExecutor.awaitTermination(30, TimeUnit.SECONDS)
-            logger.info("Scheduled executor pool shut down")
-            logger.info("Shutting down worker pool")
+            if (scheduledExecutor.isTerminated()) logger.info("Scheduled executor shut down and terminated")
+            else logger.warn("Scheduled executor NOT YET terminated, waited 30 seconds")
+
             workerPool.awaitTermination(30, TimeUnit.SECONDS)
-            logger.info("Worker pool shut down")
+            if (workerPool.isTerminated()) logger.info("Worker pool shut down and terminated")
+            else logger.warn("Worker pool NOT YET terminated, waited 30 seconds")
         } catch (Throwable t) { logger.error("Error in workerPool/scheduledExecutor shutdown", t) }
 
         // stop NotificationMessageListeners
@@ -1068,7 +1082,8 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
     }
 
 
-    Map<String, Object> getStatusMap() {
+    Map<String, Object> getStatusMap() { return getStatusMap(false) }
+    Map<String, Object> getStatusMap(boolean includeSensitive) {
         def memoryMXBean = ManagementFactory.getMemoryMXBean()
         def heapMemoryUsage = memoryMXBean.getHeapMemoryUsage()
         def nonHeapMemoryUsage = memoryMXBean.getNonHeapMemoryUsage()
@@ -1105,28 +1120,35 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
         BigDecimal diskPercent = (((diskTotalSpace - diskFreeSpace) / diskTotalSpace) * 100.0).setScale(2, RoundingMode.HALF_UP)
 
         HttpServletRequest request = getEci().getWeb()?.getRequest()
-        Map<String, Object> statusMap = [ MoquiFramework:moquiVersion,
+        Map<String, Object> statusMap = [
+            // because security: MoquiFramework:moquiVersion,
             Utilization: [LoadPercent:loadPercent, HeapPercent:heapPercent, DiskPercent:diskPercent],
             Web: [ LocalAddr:request?.getLocalAddr(), LocalPort:request?.getLocalPort(), LocalName:request?.getLocalName(),
-                     ServerName:request?.getServerName(), ServerPort:request?.getServerPort() ],
+                    ServerName:request?.getServerName(), ServerPort:request?.getServerPort() ],
             Heap: [ Used:(heapUsed/(1024*1024)).setScale(3, RoundingMode.HALF_UP),
-                      Committed:(heapMemoryUsage.getCommitted()/(1024*1024)).setScale(3, RoundingMode.HALF_UP),
-                      Max:(heapMax/(1024*1024)).setScale(3, RoundingMode.HALF_UP) ],
+                    Committed:(heapMemoryUsage.getCommitted()/(1024*1024)).setScale(3, RoundingMode.HALF_UP),
+                    Max:(heapMax/(1024*1024)).setScale(3, RoundingMode.HALF_UP) ],
             NonHeap: [ Used:(nonHeapMemoryUsage.getUsed()/(1024*1024)).setScale(3, RoundingMode.HALF_UP),
-                         Committed:(nonHeapMemoryUsage.getCommitted()/(1024*1024)).setScale(3, RoundingMode.HALF_UP) ],
+                    Committed:(nonHeapMemoryUsage.getCommitted()/(1024*1024)).setScale(3, RoundingMode.HALF_UP) ],
             Disk: [ Free:(diskFreeSpace/(1024*1024)).setScale(3, RoundingMode.HALF_UP),
-                      Usable:(runtimeFile.getUsableSpace()/(1024*1024)).setScale(3, RoundingMode.HALF_UP),
-                      Total:(diskTotalSpace/(1024*1024)).setScale(3, RoundingMode.HALF_UP) ],
-            System: [ Load:loadAvg, Processors:processors, CPU:osMXBean.getArch(),
-                        OsName:osMXBean.getName(), OsVersion:osMXBean.getVersion() ],
-            JavaRuntime: [ SpecVersion:runtimeMXBean.getSpecVersion(), VmVendor:runtimeMXBean.getVmVendor(),
-                             VmVersion:runtimeMXBean.getVmVersion(), Start:startTimestamp, UptimeHours:uptimeHours ],
+                    Usable:(runtimeFile.getUsableSpace()/(1024*1024)).setScale(3, RoundingMode.HALF_UP),
+                    Total:(diskTotalSpace/(1024*1024)).setScale(3, RoundingMode.HALF_UP) ],
+            // trimmed because security: System: [ Load:loadAvg, Processors:processors, CPU:osMXBean.getArch(), OsName:osMXBean.getName(), OsVersion:osMXBean.getVersion() ],
+            System: [ Load:loadAvg, Processors:processors ],
+            // trimmed because security: JavaRuntime: [ SpecVersion:runtimeMXBean.getSpecVersion(), VmVendor:runtimeMXBean.getVmVendor(), VmVersion:runtimeMXBean.getVmVersion(), Start:startTimestamp, UptimeHours:uptimeHours ],
+            JavaRuntime: [ Start:startTimestamp, UptimeHours:uptimeHours ],
             JavaStats: [ GcCount:gcCount, GcTimeSeconds:gcTime/1000, JIT:jitMXBean.getName(), CompileTimeSeconds:jitMXBean.getTotalCompilationTime()/1000,
-                           ClassesLoaded:classMXBean.getLoadedClassCount(), ClassesTotalLoaded:classMXBean.getTotalLoadedClassCount(),
-                           ClassesUnloaded:classMXBean.getUnloadedClassCount(), ThreadCount:threadMXBean.getThreadCount(),
-                           PeakThreadCount:threadMXBean.getPeakThreadCount() ] as Map<String, Object>,
-            DataSources: entityFacade.getDataSourcesInfo()
-        ]
+                    ClassesLoaded:classMXBean.getLoadedClassCount(), ClassesTotalLoaded:classMXBean.getTotalLoadedClassCount(),
+                    ClassesUnloaded:classMXBean.getUnloadedClassCount(), ThreadCount:threadMXBean.getThreadCount(),
+                    PeakThreadCount:threadMXBean.getPeakThreadCount() ] as Map<String, Object>
+            // because security: DataSources: entityFacade.getDataSourcesInfo()
+        ] as Map<String, Object>
+        if (includeSensitive) {
+            statusMap.MoquiFramework = moquiVersion
+            statusMap.System = [Load:loadAvg, Processors:processors, CPU:osMXBean.getArch(), OsName:osMXBean.getName(), OsVersion:osMXBean.getVersion()]
+            statusMap.JavaRuntime = [SpecVersion:runtimeMXBean.getSpecVersion(), VmVendor:runtimeMXBean.getVmVendor(), VmVersion:runtimeMXBean.getVmVersion(), Start:startTimestamp, UptimeHours:uptimeHours]
+            statusMap.DataSources = entityFacade.getDataSourcesInfo()
+        }
         return statusMap
     }
 
@@ -1462,9 +1484,11 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
                     // split into maxCreates chunks, repeat based on initial size (may be added to while running)
                     int remainingCreates = queue.size()
                     // if (remainingCreates > maxCreates) logger.warn("Deferred ArtifactHit create queue size ${remainingCreates} is greater than max creates per chunk ${maxCreates}")
+                    // logger.info("Flushing ArtifactHit queue, size " + queue.size())
                     while (remainingCreates > 0) {
                         flushQueue(queue)
                         remainingCreates -= maxCreates
+                        // logger.info("Flush ArtifactHit queue pass complete, queue size ${queue.size()} remainingCreates ${remainingCreates}")
                     }
                 } catch (Throwable t) {
                     logger.error("Error saving ArtifactHits", t)
@@ -1492,17 +1516,17 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
                     if (createListSize == 0) break
                     long startTime = System.currentTimeMillis()
                     ecfi.transactionFacade.runUseOrBegin(60, "Error saving ArtifactHits", {
+                        List<EntityValue> evList = new ArrayList<>(createListSize)
                         for (int i = 0; i < createListSize; i++) {
                             ArtifactHitInfo ahi = (ArtifactHitInfo) createList.get(i)
-                            try {
-                                EntityValue ahValue = ahi.makeAhiValue(localEcfi)
-                                ahValue.setSequencedIdPrimary()
-                                ahValue.create()
-                            } catch (Throwable t) {
-                                createList.remove(i)
-                                throw t
-                            }
+                            EntityValue ahValue = ahi.makeAhiValue(localEcfi)
+                            ahValue.setSequencedIdPrimary()
+                            evList.add(ahValue)
+                            // old approach, create call per record, too slow when ArtifactHitBin in the logging group for ElasticFacade
+                            // try { ahValue.create() } catch (Throwable t) { createList.remove(i); throw t }
                         }
+                        // new approach, use new EntityFacade.createBulk() method
+                        localEcfi.entityFacade.createBulk(evList)
                     })
                     if (isTraceEnabled) logger.trace("Created ${createListSize} ArtifactHit records in ${System.currentTimeMillis() - startTime}ms")
                     break
@@ -1750,6 +1774,7 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
         String httpPort, httpHost, httpsPort, httpsHost
         boolean httpsEnabled
         boolean requireSessionToken
+        String clientIpHeader
 
         WebappInfo(String webappName, ExecutionContextFactoryImpl ecfi) {
             this.webappName = webappName
@@ -1763,6 +1788,7 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
             httpsHost = webappNode.attribute("https-host") ?: httpHost ?: null
             httpsEnabled = "true".equals(webappNode.attribute("https-enabled"))
             requireSessionToken = !"false".equals(webappNode.attribute("require-session-token"))
+            clientIpHeader = webappNode.attribute("client-ip-header")
 
             String allowOrigins = webappNode.attribute("allow-origins")
             if (allowOrigins) for (String origin in allowOrigins.split(",")) allowOriginSet.add(origin.trim().toLowerCase())
@@ -1815,7 +1841,11 @@ class ExecutionContextFactoryImpl implements ExecutionContextFactory {
                 if (!type.equals(responseHeader.attribute("type"))) continue
                 String headerValue = responseHeader.attribute("value")
                 if (headerValue == null || headerValue.isEmpty()) continue
-                response.addHeader(responseHeader.attribute("name"), headerValue)
+                if ("true".equals(responseHeader.attribute("add"))) {
+                    response.addHeader(responseHeader.attribute("name"), headerValue)
+                } else {
+                    response.setHeader(responseHeader.attribute("name"), headerValue)
+                }
                 // logger.warn("Added header ${responseHeader.attribute("name")} value ${headerValue} type ${type}")
             }
         }

@@ -61,8 +61,9 @@ abstract class EntityFindBase implements EntityFind {
     protected String singleCondField = (String) null
     protected Object singleCondValue = null
     protected Map<String, Object> simpleAndMap = (Map<String, Object>) null
-    protected EntityConditionImplBase whereEntityCondition = (EntityConditionImplBase) null
+    protected Boolean tempHasFullPk = (Boolean) null
 
+    protected EntityConditionImplBase whereEntityCondition = (EntityConditionImplBase) null
     protected EntityConditionImplBase havingEntityCondition = (EntityConditionImplBase) null
 
     protected ArrayList<String> fieldsToSelect = (ArrayList<String>) null
@@ -938,11 +939,14 @@ abstract class EntityFindBase implements EntityFind {
                 registerForUpdateLock(simpleAndMap != null ? simpleAndMap : [(singleCondField):singleCondValue])
 
             try {
+                tempHasFullPk = hasFullPk
                 newEntityValue = oneExtended(cond, fieldInfoArray, fieldOptionsArray)
             } catch (SQLException e) {
                 throw new EntitySqlException(makeErrorMsg("Error finding one", ONE_ERROR, cond, ed, ec), e)
             } catch (Exception e) {
                 throw new EntityException(makeErrorMsg("Error finding one", ONE_ERROR, cond, ed, ec), e)
+            } finally {
+                tempHasFullPk = null
             }
 
             // register lock before if we have a full pk, otherwise after
@@ -1425,7 +1429,7 @@ abstract class EntityFindBase implements EntityFind {
                                 FieldInfo[] fieldInfoArray, FieldOrderOptions[] fieldOptionsArray) throws SQLException
 
     @Override
-    long updateAll(Map<String, ?> fieldsToSet) {
+    long updateAll(Map<String, Object> fieldsToSet) {
         boolean enableAuthz = disableAuthz ? !efi.ecfi.getEci().artifactExecutionFacade.disableAuthz() : false
         try {
             return updateAllInternal(fieldsToSet)
@@ -1433,7 +1437,7 @@ abstract class EntityFindBase implements EntityFind {
             if (enableAuthz) efi.ecfi.getEci().artifactExecutionFacade.enableAuthz()
         }
     }
-    protected long updateAllInternal(Map<String, ?> fieldsToSet) {
+    protected long updateAllInternal(Map<String, Object> fieldsToSet) {
         // NOTE: this code isn't very efficient, but will do the trick and cause all EECAs to be fired
         // NOTE: consider expanding this to do a bulk update in the DB if there are no EECAs for the entity
 
