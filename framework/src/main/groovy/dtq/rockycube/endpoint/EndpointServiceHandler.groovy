@@ -1192,7 +1192,9 @@ class EndpointServiceHandler {
 
         RestClient restClient = ec.service.rest().method(RestClient.POST)
                 .uri("${pycalcHost}/api/v1/calculator/execute")
-                .isolate(true)
+                .timeout(60)
+                .retry(2, 10)
+                .maxResponseSize(20 * 1024 * 1024)
                 .addHeader("Content-Type", "application/json")
                 .jsonObject(payload)
 
