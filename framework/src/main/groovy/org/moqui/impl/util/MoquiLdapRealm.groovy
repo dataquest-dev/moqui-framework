@@ -103,6 +103,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
     private String ldapSearchBaseQuery;
     private String ldapSearchUserQueryFilter;
     private String ldapSearchUserQuery;
+    private String ldapUserFilter;
 
     protected Class<? extends AuthenticationToken> authenticationTokenClass = UsernamePasswordToken.class
 
@@ -134,7 +135,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
             String ldapUserDnTemplate = ldapParams.attribute('user-dn-template')
             String ldapSearchBaseQueryFilter = ldapParams.attribute('search-base-query-filter')
             String ldapSearchUserQueryFilter = ldapParams.attribute('search-user-query-filter')
-
+            String ldapUserFilter = ldapParams.attribute("user-filter")
             this.contextFactory.url = ldapPath
             this.contextFactory.systemPassword = ldapSystemUserPassword
             this.contextFactory.systemUsername = ldapSystemUsername
@@ -142,6 +143,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
             this.userDnTemplate = ldapUserDnTemplate
             this.ldapSearchBaseQueryFilter = ldapSearchBaseQueryFilter
             this.ldapSearchUserQueryFilter = ldapSearchUserQueryFilter
+            this.ldapUserFilter = ldapUserFilter == null ? "(cn={principal})" : ldapUserFilter;
         } catch (Exception e) {
             logger.error("Error setting up LDAP connection. ${e.message}")
         }
@@ -321,8 +323,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
         constraints.setReturningAttributes(attrIDs);
         NamingEnumeration answer = null;
 
-        //answer = ctx.search(this.ldapSearchUserQueryFilter, "(&(objectClass=inetOrgPerson)(x-service=accountActive)(uid=" + principal + "))", constraints);
-        answer = ctx.search(this.ldapSearchUserQueryFilter, "(&(objectClass=inetOrgPerson)(cn=${principal}))", constraints);
+        answer = ctx.search(this.ldapSearchUserQueryFilter, ldapUserFilter.replace("{principal}", principal), constraints);
         if (answer.hasMore()) {
             Attributes attrs = ((SearchResult) answer.next()).getAttributes();
             user_uid =  attrs.get("cn").toString().substring(attrIDs[0].length() + 2).trim()
@@ -567,13 +568,14 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
 
         try {
             //pre-login operations - fetch account data, do not continue when not defined
+            this.contextFactory.systemPassword = token.getCredentials()
+            this.contextFactory.systemUsername = token.getPrincipal()
             newUserAccount = loginPrePassword(eci, (String) token.principal);
             userId = newUserAccount.getString("userId")
 
             //LDAP
             // check the password (credentials for this case)
             info = queryForAuthenticationInfo(token, this.getContextFactory());
-
             //post-login operations - mostly logs
             loginPostPassword(eci, newUserAccount)
 
@@ -593,6 +595,8 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
             throw new AuthenticationException("Unable to perform post-login operations.", e)
         } finally {
             loginAfterAlways(eci, userId, token.credentials as String, successful)
+            this.contextFactory.systemPassword = null
+            this.contextFactory.systemUsername = null
         }
 
         return info;
