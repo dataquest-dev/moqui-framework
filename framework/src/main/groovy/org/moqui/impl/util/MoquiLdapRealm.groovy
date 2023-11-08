@@ -564,20 +564,65 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
         String userId = null;
 
         try {
-            //pre-login operations - fetch account data, do not continue when not defined
+            //set cretendtials to get information from LDAP (used to be master password, not anymore)
             this.contextFactory.systemPassword = token.getCredentials()
             this.contextFactory.systemUsername = token.getPrincipal()
-            newUserAccount = loginPrePassword(eci, (String) token.principal);
-            userId = newUserAccount.getString("userId")
-
-            //LDAP
-            // check the password (credentials for this case)
             info = queryForAuthenticationInfo(token, this.getContextFactory());
+            String name = token.principal
+            try {
+                newUserAccount = loginPrePassword(eci, name);
+            } catch (UnknownAccountException uae) {
+                boolean authzWasDisabled
+                boolean wasIn = false
+                try {
+                    wasIn = true
+//                  create account here
+                    Map<String, Object> fields = [:]
+                    authzWasDisabled = eci.artifactExecution.disableAuthz()
+                    String user_uid = "unknown_user";
+                    String fullName = ""
+                    String mail = ""
+                    SearchControls constraints = new SearchControls();
+                    constraints.setSearchScope(SearchControls.SUBTREE_SCOPE);
+                    String attrIDs = "cn";
+                    constraints.setReturningAttributes(new String[]{attrIDs, "givenName", "sn", "mail"})
+                    LdapContext ctx = this.getContextFactory().getSystemLdapContext();
+                    NamingEnumeration answer = ctx.search(this.ldapSearchUserQueryFilter, ldapUserFilter.replace("{principal}", name), constraints);
+                    if (answer.hasMore()) {
+                        Attributes attrs = ((SearchResult) answer.next()).getAttributes();
+                        user_uid = attrs.get("cn").toString().substring(3).trim()
+                        fullName = attrs.get("givenName").toString().substring(11).trim()
+                        fullName += " " + attrs.get("sn").toString().substring(3).trim()
+                        mail = attrs.get("mail")
+                        if (mail != null)
+                            mail = mail.toString().substring(6).trim()
+                    }
+                    eci.transaction.begin(null)
+                    fields.put("userId", name)
+                    fields.put("username", name)
+                    fields.put("userFullName", fullName)
+                    fields.put("ldapUid", user_uid)
+                    // here we count on the fact, that users log in with their email, therefore name IS an email.
+                    // If not, this condition is indeed wrong
+                    fields.put("emailAddress", mail == null ? name : mail)
+                    eci.entity.makeValue("moqui.security.UserAccount").setAll(fields).create()
+                    eci.transaction.commit()
+                    newUserAccount = loginPrePassword(eci, name)
+                } catch (Exception e) {
+                    println e
+                } finally {
+                    if (wasIn) {
+                        // cannot, stop the warning
+                        if (!authzWasDisabled) {
+                            eci.artifactExecution.enableAuthz();
+                        }
+                    }
+                }
+            }
+            userId = newUserAccount.getString("userId")
             //post-login operations - mostly logs
             loginPostPassword(eci, newUserAccount)
-
             successful = true;
-
         } catch (AuthenticationNotSupportedException e) {
             String msg = "Unsupported configured authentication mechanism. ${e.message}";
             throw new UnsupportedAuthenticationMechanismException(msg, e);
@@ -595,7 +640,6 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
             this.contextFactory.systemPassword = null
             this.contextFactory.systemUsername = null
         }
-
         return info;
     }
 
