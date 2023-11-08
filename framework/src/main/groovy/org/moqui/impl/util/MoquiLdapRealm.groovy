@@ -59,8 +59,8 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp
 
 //exception classes
-public class MoquiPreLoginException extends AuthenticationException{
-    public MoquiPreLoginException(String errorMessage){
+public class MoquiPreLoginException extends AuthenticationException {
+    public MoquiPreLoginException(String errorMessage) {
         super(errorMessage);
     }
 
@@ -68,8 +68,9 @@ public class MoquiPreLoginException extends AuthenticationException{
         super(errorMessage, err)
     }
 }
-public class MoquiAfterLoginException extends AuthenticationException{
-    public MoquiAfterLoginException(String errorMessage){
+
+public class MoquiAfterLoginException extends AuthenticationException {
+    public MoquiAfterLoginException(String errorMessage) {
         super(errorMessage);
     }
 
@@ -246,6 +247,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
      * @return the the User DN prefix to use when building a runtime User DN value or {@code null} if no
      *         {@link #getUserDnTemplate() userDnTemplate} has been configured.
      */
+
     protected String getUserDnPrefix() {
         return userDnPrefix;
     }
@@ -258,6 +260,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
      * @return the User DN suffix to use when building a runtime User DN value or {@code null} if no
      *         {@link #getUserDnTemplate() userDnTemplate} has been configured.
      */
+
     protected String getUserDnSuffix() {
         return userDnSuffix;
     }
@@ -288,7 +291,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
         return sb.toString();
     }*/
 
-    protected String getUserDn( final String principal ) throws IllegalArgumentException, IllegalStateException {
+    protected String getUserDn(final String principal) throws IllegalArgumentException, IllegalStateException {
 
         if (!StringUtils.hasText(principal)) {
             throw new IllegalArgumentException("User principal cannot be null or empty for User DN construction.");
@@ -326,7 +329,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
         answer = ctx.search(this.ldapSearchUserQueryFilter, ldapUserFilter.replace("{principal}", principal), constraints);
         if (answer.hasMore()) {
             Attributes attrs = ((SearchResult) answer.next()).getAttributes();
-            user_uid =  attrs.get("cn").toString().substring(attrIDs[0].length() + 2).trim()
+            user_uid = attrs.get("cn").toString().substring(attrIDs[0].length() + 2).trim()
         } else {
             logger.error("Invalid user")
         }
@@ -358,31 +361,27 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
 
     public static HashMap<String, String> getUserLdapData(LdapContext ctx, String searchBase, String domainWithUser) {
         HashMap<String, String> userDataMap = new HashMap<>()
-        String userName = domainWithUser.substring(domainWithUser.indexOf('\\') +1 );
-        try
-        {
+        String userName = domainWithUser.substring(domainWithUser.indexOf('\\') + 1);
+        try {
             NamingEnumeration<SearchResult> userData = queryLdapData(ctx, searchBase, userName);
-            userDataMap = extractUserLdapData( userData );
+            userDataMap = extractUserLdapData(userData);
         }
-        catch(Exception e)
-        {
+        catch (Exception e) {
             //throw new RuntimeException(e)
         }
 
         return userDataMap
     }
 
-    private static NamingEnumeration<SearchResult> queryLdapData(LdapContext ctx, String searchBase, String username) throws Exception  {
+    private static NamingEnumeration<SearchResult> queryLdapData(LdapContext ctx, String searchBase, String username) throws Exception {
         String filter = "(&(objectClass=inetOrgPerson)(x-service=accountActive)(uid=" + username + "))";
         SearchControls searchCtls = new SearchControls();
         searchCtls.setSearchScope(SearchControls.SUBTREE_SCOPE);
         NamingEnumeration<SearchResult> answer = null;
-        try
-        {
+        try {
             answer = ctx.search(searchBase, filter, searchCtls);
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             logger.error("Error searching LDAP for " + filter);
             throw e;
         }
@@ -390,13 +389,12 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
         return answer;
     }
 
-    private static HashMap<String, String> extractUserLdapData( NamingEnumeration<SearchResult> userData ) throws Exception  {
+    private static HashMap<String, String> extractUserLdapData(NamingEnumeration<SearchResult> userData) throws Exception {
         HashMap<String, String> contactData = new HashMap<>()
 
-        try  {
+        try {
             // getting only the first result if we have more than one
-            if (userData.hasMoreElements())
-            {
+            if (userData.hasMoreElements()) {
                 SearchResult sr = userData.nextElement();
                 Attributes attributes = sr.getAttributes();
 
@@ -405,12 +403,11 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
                 contactData.put("ldapUid", attributes.get(AD_ATTR_NAME_UID).get().toString());
                 contactData.put("ldapFullName",
                         attributes.get(AD_ATTR_NAME_USER_GIVEN_NAME).get().toString() + ' ' +
-                        attributes.get(AD_ATTR_NAME_USER_SURNAME).get().toString()
+                                attributes.get(AD_ATTR_NAME_USER_SURNAME).get().toString()
                 );
             }
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             logger.error("Error fetching data on LDAP contact. ${e.message}");
         }
 
