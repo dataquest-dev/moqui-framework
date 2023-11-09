@@ -35,6 +35,7 @@ import org.apache.shiro.subject.PrincipalCollection
 import org.apache.shiro.util.SimpleByteSource
 import org.moqui.BaseArtifactException
 import org.moqui.Moqui
+import org.moqui.context.AuthenticationRequiredException
 import org.moqui.entity.EntityCondition
 import org.moqui.entity.EntityException
 import org.moqui.entity.EntityValue
@@ -622,6 +623,48 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
             userId = newUserAccount.getString("userId")
             //post-login operations - mostly logs
             loginPostPassword(eci, newUserAccount)
+
+            //if userAccount has LDAP uuid, control if LDAP groups match moqui groups
+            if (newUserAccount.getString("ldapUid") != null) {
+                //get moqui groups
+                Set<String> moquiUserGroups = UserFacadeImpl.getUserGroupIdSet(userId, ecfi.eci)
+                //get LDAP groups
+                //TODO
+                Set<String> ldapUserGroups = new HashSet()
+                ldapUserGroups.add("Domain Users")
+                //control if ldap groups match moqui groups
+                for (String ldapGroupId: ldapUserGroups) {
+                    if (!moquiUserGroups.contains(ldapGroupId)) {
+                        //control if ldap group doesn't exists
+                        if (!UserFacadeImpl.groupExists(ldapGroupId,  ecfi.eci)) {
+                            //create group
+                            Map<String, Object> fields = [:]
+                            fields.put("userGroupId", ldapGroupId)
+                            fields.put("description", "LDAP")
+                            boolean beganTransaction = eci.transaction.begin(null)
+                            try {
+                                eci.entity.makeValue("moqui.security.UserGroup").setAll(fields).create()
+                            } catch (Throwable t) {
+                                try {
+                                    eci.transaction.rollback(beganTransaction, "Error creating new group " + ldapGroupId, t)
+                                } finally {
+                                    if (eci.transaction.isTransactionInPlace()) eci.transaction.commit(beganTransaction)
+                                }
+                            }
+                        }
+                        //add user to moqui group
+                        UserFacadeImpl.addGroupMember(ldapGroupId, userId, ecfi.eci)
+                    }
+                    //ldap group exists in moqui
+                    moquiUserGroups.remove(ldapGroupId)
+                }
+
+                //remove a user from groups who is no longer a member
+                for (String moquiGroupId: moquiUserGroups) {
+                    //remove user from group
+                    UserFacadeImpl.removeGroupMember(moquiGroupId, userId, ecfi.eci)
+                }
+            }
             successful = true;
         } catch (AuthenticationNotSupportedException e) {
             String msg = "Unsupported configured authentication mechanism. ${e.message}";
