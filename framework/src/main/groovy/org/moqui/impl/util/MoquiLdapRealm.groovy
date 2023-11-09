@@ -35,7 +35,6 @@ import org.apache.shiro.subject.PrincipalCollection
 import org.apache.shiro.util.SimpleByteSource
 import org.moqui.BaseArtifactException
 import org.moqui.Moqui
-import org.moqui.context.AuthenticationRequiredException
 import org.moqui.entity.EntityCondition
 import org.moqui.entity.EntityException
 import org.moqui.entity.EntityValue
@@ -643,12 +642,14 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
                             fields.put("description", "LDAP")
                             boolean beganTransaction = eci.transaction.begin(null)
                             try {
+                                eci.artifactExecution.disableAuthz()
                                 eci.entity.makeValue("moqui.security.UserGroup").setAll(fields).create()
                             } catch (Throwable t) {
                                 try {
                                     eci.transaction.rollback(beganTransaction, "Error creating new group " + ldapGroupId, t)
                                 } finally {
                                     if (eci.transaction.isTransactionInPlace()) eci.transaction.commit(beganTransaction)
+                                    eci.artifactExecution.enableAuthz()
                                 }
                             }
                         }
@@ -661,6 +662,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
 
                 //remove a user from groups who is no longer a member
                 for (String moquiGroupId: moquiUserGroups) {
+                    if (moquiGroupId == 'ALL_USERS') continue
                     //remove user from group
                     UserFacadeImpl.removeGroupMember(moquiGroupId, userId, ecfi.eci)
                 }

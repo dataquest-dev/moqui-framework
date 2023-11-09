@@ -16,13 +16,16 @@ package org.moqui.impl.context
 import groovy.transform.CompileStatic
 import org.moqui.context.ArtifactExecutionInfo
 import org.moqui.context.AuthenticationRequiredException
+import org.moqui.context.TransactionException
 import org.moqui.entity.EntityCondition
 import org.moqui.impl.context.ArtifactExecutionInfoImpl.ArtifactAuthzCheck
 import org.moqui.impl.entity.EntityValueBase
 import org.moqui.impl.screen.ScreenUrlInfo
 import org.moqui.impl.util.MoquiShiroRealm
 //import org.moqui.impl.util.MoquiLdapRealm
+import org.moqui.impl.util.ForceLoginToken
 import org.moqui.util.MNode
+import org.moqui.util.ObjectUtilities
 import org.moqui.util.StringUtilities
 import org.moqui.util.WebUtilities
 
@@ -827,8 +830,8 @@ class UserFacadeImpl implements UserFacade {
 
     static boolean groupExists(String groupId, ExecutionContextImpl eci) {
         if (!groupId) return false
-        return (eci.getEntity().find("moqui.security.UserGroup").condition("userGroupId", groupId)
-                .useCache(true).disableAuthz().list().filterByDate(null, null, null)) as boolean
+        return eci.getEntity().find("moqui.security.UserGroup").condition("userGroupId", groupId)
+                .disableAuthz().list().size() > 0
     }
 
     @Override Set<String> getUserGroupIdSet() {
@@ -863,6 +866,7 @@ class UserFacadeImpl implements UserFacade {
         } catch (Throwable t) {
             try {
                 eci.transaction.rollback(beganTransaction, "Error added new member " + userId + " to group " + groupId, t)
+                throw new TransactionException(t.getMessage())
             } finally {
                 if (eci.transaction.isTransactionInPlace()) eci.transaction.commit(beganTransaction)
                 eci.artifactExecution.enableAuthz()
@@ -880,6 +884,7 @@ class UserFacadeImpl implements UserFacade {
         } catch (Throwable t) {
             try {
                 eci.transaction.rollback(beganTransaction, "Error added new member " + userId + " to group " + groupId, t)
+                throw new TransactionException(t.getMessage())
             } finally {
                 if (eci.transaction.isTransactionInPlace()) eci.transaction.commit(beganTransaction)
             }
