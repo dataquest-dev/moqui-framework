@@ -52,6 +52,7 @@ import javax.naming.NamingEnumeration;
 import javax.naming.directory.SearchResult;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.Attributes;
+import javax.naming.directory.Attribute
 import javax.naming.ldap.LdapContext
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest
@@ -628,9 +629,24 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
                 //get moqui groups
                 Set<String> moquiUserGroups = UserFacadeImpl.getUserGroupIdSet(userId, ecfi.eci)
                 //get LDAP groups
-                //TODO
                 Set<String> ldapUserGroups = new HashSet()
+                //Domain Users group is default for all ldap users
                 ldapUserGroups.add("Domain Users")
+                eci.artifactExecution.disableAuthz()
+                SearchControls constraints = new SearchControls();
+                constraints.setSearchScope(SearchControls.SUBTREE_SCOPE)
+                //find group in attribute memberOf
+                constraints.setReturningAttributes(new String[]{userId, "memberOf"})
+                LdapContext ctx = this.getContextFactory().getSystemLdapContext()
+                NamingEnumeration answer = ctx.search(this.ldapSearchUserQueryFilter, ldapUserFilter.replace("{principal}", name), constraints)
+                Attributes attrs = ((SearchResult) answer.next()).getAttributes()
+                eci.artifactExecution.enableAuthz()
+                Attribute memberOf = attrs.get("memberof")
+                for (int i = 0; i < memberOf.size(); i++) {
+                    //get name of the group
+                    String groupName = memberOf.get(i).toString().split(',')[0].split('=')[1]
+                    ldapUserGroups.add(groupName)
+                }
                 //control if ldap groups match moqui groups
                 for (String ldapGroupId: ldapUserGroups) {
                     if (!moquiUserGroups.contains(ldapGroupId)) {
