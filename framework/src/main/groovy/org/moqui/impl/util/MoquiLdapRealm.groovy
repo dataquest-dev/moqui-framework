@@ -37,6 +37,7 @@ import org.moqui.BaseArtifactException
 import org.moqui.Moqui
 import org.moqui.entity.EntityCondition
 import org.moqui.entity.EntityException
+import org.moqui.entity.EntityList
 import org.moqui.entity.EntityValue
 import org.moqui.impl.context.ArtifactExecutionFacadeImpl
 import org.moqui.impl.context.ExecutionContextFactoryImpl
@@ -106,6 +107,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
     private String ldapSearchUserQueryFilter;
     private String ldapSearchUserQuery;
     private String ldapUserFilter;
+    private String ldapDefaultGroup
 
     protected Class<? extends AuthenticationToken> authenticationTokenClass = UsernamePasswordToken.class
 
@@ -138,6 +140,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
             String ldapSearchBaseQueryFilter = ldapParams.attribute('search-base-query-filter')
             String ldapSearchUserQueryFilter = ldapParams.attribute('search-user-query-filter')
             String ldapUserFilter = ldapParams.attribute("user-filter")
+            String ldapDefaultGroup = ldapParams.attribute("ldap-default-group")
             this.contextFactory.url = ldapPath
             this.contextFactory.systemPassword = ldapSystemUserPassword
             this.contextFactory.systemUsername = ldapSystemUsername
@@ -146,6 +149,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
             this.ldapSearchBaseQueryFilter = ldapSearchBaseQueryFilter
             this.ldapSearchUserQueryFilter = ldapSearchUserQueryFilter
             this.ldapUserFilter = ldapUserFilter == null ? "(cn={principal})" : ldapUserFilter;
+            this.ldapDefaultGroup = ldapDefaultGroup == null ? "LDAP Default group" : ldapDefaultGroup
         } catch (Exception e) {
             logger.error("Error setting up LDAP connection. ${e.message}")
         }
@@ -625,13 +629,23 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
             loginPostPassword(eci, newUserAccount)
 
             //if userAccount has LDAP uuid, control if LDAP groups match moqui groups
-            if (newUserAccount.getString("ldapUid") != null) {
-                //get moqui groups
+            if (newUserAccount.getString("ldapUid")) {
+                //get moqui groups whose is user member
                 Set<String> moquiUserGroups = UserFacadeImpl.getUserGroupIdSet(userId, ecfi.eci)
-                //get LDAP groups
+                //get all moqui groups whose are type LDAP
+                Set<String> moquiLdapGroups = new HashSet()
+                if (userId) {
+                    // expand the userGroupId Set with LDAP type
+                    EntityList ugmList = eci.getEntity().find("moqui.security.UserGroup").condition("groupTypeEnumId", "UgtLDAP")
+                            .useCache(true).disableAuthz().list()
+                    for (EntityValue userGroupMember in ugmList) moquiLdapGroups.add((String) userGroupMember.userGroupId)
+                }
+                //create intersection between LDAP groups and user member groups
+                moquiUserGroups.retainAll(moquiLdapGroups)
+                // LDAP groups
                 Set<String> ldapUserGroups = new HashSet()
                 //Domain Users group is default for all ldap users
-                ldapUserGroups.add("Domain Users")
+                ldapUserGroups.add(ldapDefaultGroup)
                 eci.artifactExecution.disableAuthz()
                 SearchControls constraints = new SearchControls();
                 constraints.setSearchScope(SearchControls.SUBTREE_SCOPE)
@@ -642,10 +656,12 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
                 Attributes attrs = ((SearchResult) answer.next()).getAttributes()
                 eci.artifactExecution.enableAuthz()
                 Attribute memberOf = attrs.get("memberof")
-                for (int i = 0; i < memberOf.size(); i++) {
-                    //get name of the group
-                    String groupName = memberOf.get(i).toString().split(',')[0].split('=')[1]
-                    ldapUserGroups.add(groupName)
+                if (memberOf) {
+                    for (int i = 0; i < memberOf.size(); i++) {
+                        //get name of the group
+                        String groupName = memberOf.get(i).toString().split(',')[0].split('=')[1]
+                        ldapUserGroups.add(groupName)
+                    }
                 }
                 //control if ldap groups match moqui groups
                 for (String ldapGroupId: ldapUserGroups) {
@@ -655,7 +671,8 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
                             //create group
                             Map<String, Object> fields = [:]
                             fields.put("userGroupId", ldapGroupId)
-                            fields.put("description", "LDAP")
+                            fields.put("description", "LDAP users")
+                            fields.put("groupTypeEnumId", "UgtLDAP")
                             boolean beganTransaction = eci.transaction.begin(null)
                             try {
                                 eci.artifactExecution.disableAuthz()
@@ -678,7 +695,6 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
 
                 //remove a user from groups who is no longer a member
                 for (String moquiGroupId: moquiUserGroups) {
-                    if (moquiGroupId == 'ALL_USERS') continue
                     //remove user from group
                     UserFacadeImpl.removeGroupMember(moquiGroupId, userId, ecfi.eci)
                 }
