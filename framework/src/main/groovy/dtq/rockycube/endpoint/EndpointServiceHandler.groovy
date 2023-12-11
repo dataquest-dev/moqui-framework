@@ -61,7 +61,8 @@ class EndpointServiceHandler {
     private static String CONST_SEARCH_USING_DATA_PROVIDED      = 'searchUsingDataProvided'
     // explicit update forbidding
     private static String CONST_FORBID_DATABASE_UPDATE          = 'forbidDatabaseUpdate'
-
+    // field that stores identity ID, it shall be used to create a condition term
+    private static String CONST_IDENTITY_ID_FOR_SEARCH          = 'identitySearch'
 
     /*
     DEFAULTS
@@ -341,6 +342,20 @@ class EndpointServiceHandler {
         if (!args.containsKey(CONST_FORBID_DATABASE_UPDATE))
         {
             args.put(CONST_FORBID_DATABASE_UPDATE, false)
+        }
+
+        // set term from args, if `identity` passed in
+        if (args.containsKey(CONST_IDENTITY_ID_FOR_SEARCH))
+        {
+            // only supported for single primary key entities
+            def hasSinglePrimaryKey = this.ed.pkFieldNames.size() == 1
+            if (this.term.empty && hasSinglePrimaryKey)
+            {
+                this.term.add([field: this.ed.pkFieldNames[0], value: args[CONST_IDENTITY_ID_FOR_SEARCH]])
+            }
+
+            // remove from args, no need to store it
+            args.remove(CONST_IDENTITY_ID_FOR_SEARCH)
         }
     }
 
