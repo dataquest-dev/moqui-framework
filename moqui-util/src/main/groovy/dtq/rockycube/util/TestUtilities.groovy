@@ -38,7 +38,7 @@ public class TestUtilities {
         return FileUtils.getFile(path)
     }
 
-    public static void executeOnEachRecord(String[] fromFile, Closure cbExecOnRow)
+    public static void executeOnEachRecord(String[] fromFile, Closure cbExecOnRow, logger=null)
     {
         // load test resource
         def js = loadTestResource(fromFile)
@@ -46,7 +46,9 @@ public class TestUtilities {
         // import data so that we have something to test on
         ArrayList<LazyMap> importJs = (ArrayList<LazyMap>) new JsonSlurper().parse(js.bytes)
         importJs.eachWithIndex{ LazyMap entry, int i  ->
+            if (logger) logger.info("*************** Test ${i + 1} [START ] ***************")
             cbExecOnRow(i, entry['entity'], entry['data'])
+            if (logger) logger.info("*************** Test ${i + 1} [FINISH] ***************\n")
         }
     }
 
@@ -96,6 +98,25 @@ public class TestUtilities {
         String[] importFilePath = extendList(RESOURCE_PATH, resDir)
         def is = new FileInputStream(getInputFile(importFilePath))
         return is
+    }
+
+    public static Object loadTestResourceJs(String resDir)
+    {
+        return loadTestResourceJs((String []) resDir.split('/'))
+    }
+
+    public static Object loadTestResourceJs(String[] resDir)
+    {
+        def is = loadTestResource(resDir)
+        def gson = new Gson()
+        def js
+        try {
+            js = gson.fromJson(new InputStreamReader(is, StandardCharsets.UTF_8), HashMap.class)
+        } catch (Exception exc) {
+            is = loadTestResource(resDir)
+            js = gson.fromJson(new InputStreamReader(is, StandardCharsets.UTF_8), ArrayList.class)
+        }
+        return js
     }
 
     public static void testSingleFile(String[] resDirPath, Closure cb, Logger logger=null) throws IOException, URISyntaxException {
