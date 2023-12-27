@@ -1,4 +1,6 @@
 import dtq.rockycube.entity.EntityHelper
+import org.moqui.impl.entity.EntityDbMeta
+
 import java.time.LocalDate
 import junit.framework.Test
 import org.moqui.Moqui
@@ -81,5 +83,17 @@ class EntityHelperTests extends Specification {
 
         then:
         1 == 1
+    }
+
+    def "test entity name obfuscation"() {
+        when:
+
+        def ed = efi.getEntityDefinition("ledger.documents.LedgerDocument@231227")
+        StringBuilder sb = new StringBuilder()
+        EntityDbMeta.obfuscateName(ed, sb)
+
+        then:
+
+        assert sb.length() == 30
     }
 }
