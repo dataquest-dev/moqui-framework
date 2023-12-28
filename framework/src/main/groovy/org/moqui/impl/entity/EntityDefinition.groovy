@@ -80,7 +80,8 @@ class EntityDefinition {
     /**
      * Flag for indicating a special entity. If set to true,
      * the entity can have multiple instances of itself, being distinguished
-     * by a suffix
+     * by a suffix.
+     * For example: LedgerDocument@231227_153001
      */
     private boolean multipleInstanceEntity = false
 

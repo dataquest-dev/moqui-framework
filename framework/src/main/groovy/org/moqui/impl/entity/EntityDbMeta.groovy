@@ -567,7 +567,9 @@ class EntityDbMeta {
         if (databaseNode.attribute("use-pk-constraint-names") != "false") {
 
             String pkName = null
-            // for named-defined entity, use random string generator
+            // for multiple-instance type entity, use random string generator
+            // this way, the indexes for respective tables use unique names
+            // and the create procedure does not fail
             if (!ed.isMultipleInstanceEntity)
             {
                 pkName = "PK_" + ed.getTableName()

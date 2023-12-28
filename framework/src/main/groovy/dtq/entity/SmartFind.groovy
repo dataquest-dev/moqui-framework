@@ -1,6 +1,6 @@
 package dtq.entity
 
-
+import groovy.json.JsonSlurper
 import org.moqui.entity.EntityDynamicView
 import org.moqui.entity.EntityException
 import org.moqui.entity.EntityListIterator
@@ -16,6 +16,13 @@ import org.moqui.impl.entity.condition.EntityConditionImplBase
 import java.sql.ResultSet
 import java.sql.SQLException
 
+/**
+ * This class is used for advanced querying. In contrast to original EntityFind, SmartFind supports
+ * searching using querying multiple tables at once.
+ *
+ * A major drawback is that it cannot return EntityListImpl which allows direct data modification, but
+ * only a list of HashMaps.
+ */
 class SmartFind extends EntityFindBase {
     SmartFind(EntityFacadeImpl efi, EntityDefinition ed) {
         super(efi, ed)
@@ -73,6 +80,7 @@ class SmartFind extends EntityFindBase {
             efb.makePreparedStatement();
             efb.setPreparedStatementValues();
 
+            JsonSlurper slurper = new JsonSlurper()
             ResultSet rs = efb.executeQuery();
             if (rs != null) {
                 def rsmd = rs.getMetaData()
