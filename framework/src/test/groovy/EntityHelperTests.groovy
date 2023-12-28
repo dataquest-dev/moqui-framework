@@ -95,7 +95,7 @@ class EntityHelperTests extends Specification {
     def "test entity name obfuscation"() {
         when:
 
-        def ed = efi.getEntityDefinition("ledger.documents.LedgerDocument@231227")
+        def ed = efi.getEntityDefinition("moqui.screen.form.DbFormFieldAttribute@231227")
         StringBuilder sb = new StringBuilder()
         EntityDbMeta.obfuscateName(ed, sb)
 
