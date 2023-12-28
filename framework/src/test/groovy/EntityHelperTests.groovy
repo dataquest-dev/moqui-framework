@@ -1,5 +1,6 @@
 import dtq.rockycube.entity.EntityHelper
 import org.moqui.impl.entity.EntityDbMeta
+import org.moqui.impl.entity.EntityFacadeImpl
 
 import java.time.LocalDate
 import junit.framework.Test
@@ -22,12 +23,18 @@ class EntityHelperTests extends Specification {
     ExecutionContext ec
 
     @Shared
+    EntityFacadeImpl efi
+
+    @Shared
     EntityHelper helper
 
     def setupSpec() {
         // init the framework, get the ec
         ec = Moqui.getExecutionContext()
         ec.user.loginUser('john.hardy', 'moqui')
+
+        // initialize EFI
+        efi = (EntityFacadeImpl) ec.entity
 
         // initialize tools for searching among entities
         helper = new EntityHelper(ec)
