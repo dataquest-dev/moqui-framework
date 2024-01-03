@@ -51,7 +51,7 @@ jobs:
           repository: dataquest-dev/moqui-acc-extractor
           ssh-key: ${{ secrets.DK_MOQUI_ACC_EXTRACTOR }}
           path: './runtime/component/moqui-acc-extractor'
-          ref: master
+          ref: main
       - name: Prep - clean database
         run: ./gradlew cleanDb
       - name: Prep - load database
