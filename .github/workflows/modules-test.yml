@@ -74,7 +74,7 @@ jobs:
           repository: dataquest-dev/moqui-runtime
           path: './runtime'
           ref: production
-      - name: Checkout moqui-closure-api
+      - name: Checkout moqui-projects-api
         uses: actions/checkout@v2
         with:
           repository: dataquest-dev/moqui-projects-api
@@ -117,7 +117,7 @@ jobs:
           ssh-key: ${{ secrets.DK_MOQUI_ACC_EXTRACTOR }}
           path: './runtime/component/moqui-acc-extractor'
           ref: main
-      - name: Checkout moqui-closure-api
+      - name: Checkout moqui-projects-api
         uses: actions/checkout@v2
         with:
           repository: dataquest-dev/moqui-projects-api
