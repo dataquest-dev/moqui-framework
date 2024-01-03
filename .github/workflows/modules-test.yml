@@ -30,7 +30,7 @@ jobs:
       - name: Run unit tests on all components
         run: ./gradlew compTest
 
-acc-extractor-test:
+  acc-extractor-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
