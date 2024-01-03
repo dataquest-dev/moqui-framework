@@ -1,7 +1,7 @@
 name: framework-basic-tests
 on: [push]
 jobs:
-  build:
+  unit-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -30,3 +30,5 @@ jobs:
         run: ./gradlew test --tests dtq.rockycube.DynamicRelationshipTester
       - name: Run tests (PersonEntityTester)
         run: ./gradlew test --tests dtq.rockycube.PersonEntityTester
+      - name: Run tests (SmartFindTester)
+        run: ./gradlew test --tests dtq.rockycube.SmartFindTester
