@@ -667,8 +667,8 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
                 Attribute memberOf = attrs.get(groupMemberAttr)
                 if (memberOf) {
                     for (int i = 0; i < memberOf.size(); i++) {
-                        //get name of the group
-                        String groupName = memberOf.get(i).toString().split(',')[0].split('=')[1]
+                        //get (the whole) name of the group
+                        String groupName = memberOf.get(i).toString()
                         ldapUserGroups.add(groupName)
                     }
                 }
