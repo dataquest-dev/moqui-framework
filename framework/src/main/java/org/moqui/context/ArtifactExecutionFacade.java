@@ -80,4 +80,10 @@ public interface ArtifactExecutionFacade {
      * in the system).
      */
     void enableEntityEca();
+
+    /**
+     * Is authorization disabled?
+     * @return boolean
+     */
+    boolean getAuthzDisabled();
 }
