@@ -61,4 +61,11 @@ along with this software (see the LICENSE.md file). If not, see
     <!-- Special Permissions -->
     <moqui.security.UserPermission userPermissionId="ADMIN_PASSWORD" description="Admin Password Update"/>
     <moqui.security.UserGroupPermission userGroupId="ADMIN" userPermissionId="ADMIN_PASSWORD" fromDate="0"/>
+
+    <!-- Allow Admin access to moqui.security -->
+    <moqui.security.ArtifactGroup artifactGroupId="MoquiSecurityAcc" description="Access to entity from package moqui.security"/>
+    <moqui.security.ArtifactGroupMember artifactGroupId="MoquiSecurityAcc" artifactName="moqui.security.+"
+                                        nameIsPattern="Y" artifactTypeEnumId="AT_ENTITY"/>
+    <moqui.security.ArtifactAuthz artifactAuthzId="MoquiSecurityAccADMIN" userGroupId="ADMIN" artifactGroupId="MoquiSecurityAcc"
+                                  authzTypeEnumId="AUTHZT_ALWAYS" authzActionEnumId="AUTHZA_ALL"/>
 </entity-facade-xml>
