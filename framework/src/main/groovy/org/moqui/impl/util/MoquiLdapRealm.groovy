@@ -601,7 +601,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
                     String mail = ""
                     SearchControls constraints = new SearchControls();
                     constraints.setSearchScope(SearchControls.SUBTREE_SCOPE);
-                    constraints.setReturningAttributes(new String[]{"cn" , "givenName", "sn", "mail"})
+                    constraints.setReturningAttributes(new String[]{"cn", "givenName", "sn", "mail"})
                     LdapContext ctx = this.getContextFactory().getSystemLdapContext();
                     NamingEnumeration answer = ctx.search(this.ldapSearchUserQueryFilter, ldapUserFilter.replace("{principal}", name), constraints);
                     if (answer.hasMore()) {
@@ -681,12 +681,12 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
                         if (finalName.contains("="))
                             finalName = finalName.substring(finalName.indexOf('=') + 1)
                         if (finalName.contains(','))
-                            finalName = finalName.substring(0,finalName.indexOf(','))
+                            finalName = finalName.substring(0, finalName.indexOf(','))
                         if (finalName.isEmpty())
                             finalName = fullGroupName
                         // trim to db attribute length
                         if (finalName.length() > 40)
-                            finalName = finalName.substring(0,40);
+                            finalName = finalName.substring(0, 40);
                         // add to list of full names
                         if (ldapUserGroups.contains(finalName)) {
                             logger.error("Duplicate group names! Cannot have two groups with the same" +
@@ -699,7 +699,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
                     }
                 }
                 //control if ldap groups match moqui groups
-                for (String ldapGroupId: ldapUserGroups) {
+                for (String ldapGroupId : ldapUserGroups) {
                     if (!moquiUserGroups.contains(ldapGroupId)) {
                         //control if ldap group doesn't exists
                         boolean exists = eci.getEntity().find("moqui.security.UserGroup")
@@ -734,7 +734,7 @@ class MoquiLdapRealm extends AuthorizingRealm implements Realm, Authorizer {
                     moquiUserGroups.remove(ldapGroupId)
                 }
                 //remove a user from groups who is no longer a member
-                for (String moquiGroupId: moquiUserGroups) {
+                for (String moquiGroupId : moquiUserGroups) {
                     //remove user from group
                     UserFacadeImpl.removeGroupMember(moquiGroupId, userId, ecfi.eci)
                 }
