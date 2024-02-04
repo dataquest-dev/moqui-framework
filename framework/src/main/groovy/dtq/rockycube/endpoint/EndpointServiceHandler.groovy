@@ -519,8 +519,6 @@ class EndpointServiceHandler {
         // 3. composite fields handling
         this.compositeFields.each {String fieldName->
             def keyUsed = CollectionUtils.keyInUse(fieldName)
-
-            GenericUtilities.debugFile(ec, "esh-collection-composite.json", single)
             def foundValue = CollectionUtils.findKeyInMap((HashMap) single, fieldName, Object.class, null)
             if (!foundValue) {
                 // insert a default value
