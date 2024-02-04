@@ -15,6 +15,7 @@ class CollectionUtils {
     public static <T> T findKeyInMap(Map whereToSearch, ArrayList searchFor, Class<T> expectedType, Object defaultIfNotFound=null){
         if (searchFor.empty) return defaultIfNotFound as T
         def keyUsed = searchFor[0]
+        if (keyUsed == '*') return whereToSearch.asType(expectedType)
         if (!whereToSearch.containsKey(keyUsed)) return defaultIfNotFound as T
 
         // this is it
@@ -48,7 +49,7 @@ class CollectionUtils {
             try {
                 def casted = originalValue.asType(expectedType)
                 return casted
-            } catch (Exception exc){
+            } catch (Exception ignored){
                 return defaultIfNotFound as T
             }
         }

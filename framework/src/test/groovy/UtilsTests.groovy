@@ -1,3 +1,4 @@
+import dtq.rockycube.util.CollectionUtils
 import org.apache.commons.io.FileUtils
 import org.moqui.Moqui
 import org.moqui.entity.EntityCondition
@@ -281,6 +282,27 @@ class UtilsTests extends Specification {
         assert resultEom == ViUtilities.convertToEom('1981-03-20')
 
         then:
+        assert true
+    }
+
+    def "test collection search"(){
+        when:
+        TestUtilities.testSingleFile((String[]) ["Utils", "collection-search", "expected-search-result.json"],
+                {Object processed, Object expected, Integer idx->
+
+                    HashMap whereToLook = (HashMap) processed['whereToLook']
+                    String searchKey = (String) processed['searchKey']
+                    def ret = CollectionUtils.findKeyInMap(whereToLook, searchKey, HashMap.class, [:])
+
+                    logger.info("Searched map: ${whereToLook}")
+                    logger.info("Searched key: ${searchKey}")
+                    logger.info("Result: ${ret}")
+
+                    assert ret == (HashMap) expected['result']
+                },
+                logger)
+        then:
+
         assert true
     }
 }
