@@ -11,7 +11,7 @@
       }
     },
     {
-      "result": [{"salesPerson": "Zaluzhnyi", "location": "UA"}]
+      "result": [{"general": {"salesPerson": "Zaluzhnyi", "location": "UA"}}]
     }
   ],
   [

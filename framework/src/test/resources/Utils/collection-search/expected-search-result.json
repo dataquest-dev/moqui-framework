@@ -29,6 +29,7 @@
       "searchKey": "testJsonField.general.*"
     },
     {
+      "key": "general",
       "result": {
         "salesPerson": "Zaluzhnyi",
         "location": "UA"

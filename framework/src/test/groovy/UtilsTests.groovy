@@ -292,12 +292,14 @@ class UtilsTests extends Specification {
 
                     HashMap whereToLook = (HashMap) processed['whereToLook']
                     String searchKey = (String) processed['searchKey']
+                    def keyUsed = CollectionUtils.keyInUse(searchKey)
                     def ret = CollectionUtils.findKeyInMap(whereToLook, searchKey, HashMap.class, [:])
 
                     logger.info("Searched map: ${whereToLook}")
                     logger.info("Searched key: ${searchKey}")
                     logger.info("Result: ${ret}")
 
+                    assert keyUsed == (String) expected['key']
                     assert ret == (HashMap) expected['result']
                 },
                 logger)

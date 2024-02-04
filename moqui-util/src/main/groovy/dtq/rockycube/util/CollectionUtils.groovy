@@ -67,7 +67,13 @@ class CollectionUtils {
      */
     public static String keyInUse(String searchForKey)
     {
-        return searchForKey.split('\\.')[-1]
+        def keys = searchForKey.split('\\.')
+
+        // if there is an asterisk?
+        if (keys.size() > 1) if (keys[-1] == '*') return keys[-2]
+
+        // otherwise return last item
+        return keys[-1]
     }
 
     public static <T> T findKeyInMap(Object whereToSearch, String searchForKey, Class<T> expectedType, Object defaultIfNotFound=null)
@@ -105,9 +111,9 @@ class CollectionUtils {
      * @param lm
      * @return
      */
-    public static HashMap convertLazyMap(LazyMap lm)
+    public static LinkedHashMap convertLazyMap(LazyMap lm)
     {
-        def res = new HashMap()
+        def res = new LinkedHashMap()
         for ( prop in lm ) {
             def actualValue = prop.value
 
@@ -119,6 +125,6 @@ class CollectionUtils {
             }
             res[prop.key] = actualValue
         }
-        return res;
+        return res
     }
 }
